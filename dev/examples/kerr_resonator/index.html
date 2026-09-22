@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Driven Kerr resonator · DiSLOUTrajectories.jl</title><meta name="title" content="Driven Kerr resonator · DiSLOUTrajectories.jl"/><meta property="og:title" content="Driven Kerr resonator · DiSLOUTrajectories.jl"/><meta property="twitter:title" content="Driven Kerr resonator · DiSLOUTrajectories.jl"/><meta name="description" content="Documentation for DiSLOUTrajectories.jl."/><meta property="og:description" content="Documentation for DiSLOUTrajectories.jl."/><meta property="twitter:description" content="Documentation for DiSLOUTrajectories.jl."/><meta property="og:url" content="https://alice-bob-sw.github.io/DiSLOUTrajectories.jl/examples/kerr_resonator/"/><meta property="twitter:url" content="https://alice-bob-sw.github.io/DiSLOUTrajectories.jl/examples/kerr_resonator/"/><link rel="canonical" href="https://alice-bob-sw.github.io/DiSLOUTrajectories.jl/examples/kerr_resonator/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.63.2/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img class="docs-light-only" src="../../assets/logo.svg" alt="DiSLOUTrajectories.jl logo"/><img class="docs-dark-only" src="../../assets/logo-dark.svg" alt="DiSLOUTrajectories.jl logo"/></a><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><span class="tocitem">Home</span><ul><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../getting_started/installation/">Installation</a></li><li><a class="tocitem" href="../../getting_started/quickstart/">Quick start</a></li><li><a class="tocitem" href="../../getting_started/cite/">Cite</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../">Overview</a></li><li class="is-active"><a class="tocitem" href>Driven Kerr resonator</a><ul class="internal"><li><a class="tocitem" href="#Prepare-the-environment"><span>Prepare the environment</span></a></li><li><a class="tocitem" href="#Load-the-packages"><span>Load the packages</span></a></li><li><a class="tocitem" href="#Define-the-Kerr-model"><span>Define the Kerr model</span></a></li><li><a class="tocitem" href="#Discover-the-stable-gauges-and-choose-the-initial-state"><span>Discover the stable gauges and choose the initial state</span></a></li><li><a class="tocitem" href="#Compare-with-trajectory-based-gauge-discovery"><span>Compare with trajectory-based gauge discovery</span></a></li><li><a class="tocitem" href="#Evolve-the-ensemble-and-a-reference-solution"><span>Evolve the ensemble and a reference solution</span></a></li><li><a class="tocitem" href="#Inspect-ensemble-and-trajectory-Wigner-functions"><span>Inspect ensemble and trajectory Wigner functions</span></a></li><li><a class="tocitem" href="#Enable-Layer-III"><span>Enable Layer III</span></a></li></ul></li><li><a class="tocitem" href="../two_mode_ideal_cat/">Two-mode ideal cat</a></li><li><a class="tocitem" href="../two_mode_detuned_cat/">Two-mode detuned cat</a></li></ul></li><li><a class="tocitem" href="../../api/">API reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Driven Kerr resonator</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Driven Kerr resonator</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/Alice-Bob-SW/DiSLOUTrajectories.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/Alice-Bob-SW/DiSLOUTrajectories.jl/blob/main/docs/src/examples/kerr_resonator.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Driven-Kerr-resonator"><a class="docs-heading-anchor" href="#Driven-Kerr-resonator">Driven Kerr resonator</a><a id="Driven-Kerr-resonator-1"></a><a class="docs-heading-anchor-permalink" href="#Driven-Kerr-resonator" title="Permalink"></a></h1><p>Follow a driven, lossy Kerr resonator from an unstable initial state toward its two metastable branches. We will discover the optimal gauges, compare the trajectory dynamics with a master-equation solution, inspect the Wigner functions, and enable the reduced propagation of Layer III.</p><p>Run the code blocks in order in one Julia session, starting from the repository root. See <a href="../#Running-the-examples">Running the examples</a> for the environment setup.</p><ul><li><a href="#Prepare-the-environment">Prepare the environment</a></li><li><a href="#Load-the-packages">Load the packages</a></li><li><a href="#Define-the-Kerr-model">Define the Kerr model</a></li><li><a href="#Discover-the-stable-gauges-and-choose-the-initial-state">Discover the stable gauges and choose the initial state</a></li><li><a href="#Compare-with-trajectory-based-gauge-discovery">Compare with trajectory-based gauge discovery</a></li><li><a href="#Evolve-the-ensemble-and-a-reference-solution">Evolve the ensemble and a reference solution</a></li><li class="no-marker"><ul><li><a href="#Read-the-photon-number-dynamics">Read the photon-number dynamics</a></li></ul></li><li><a href="#Inspect-ensemble-and-trajectory-Wigner-functions">Inspect ensemble and trajectory Wigner functions</a></li><li><a href="#Enable-Layer-III">Enable Layer III</a></li></ul><h2 id="Prepare-the-environment"><a class="docs-heading-anchor" href="#Prepare-the-environment">Prepare the environment</a><a id="Prepare-the-environment-1"></a><a class="docs-heading-anchor-permalink" href="#Prepare-the-environment" title="Permalink"></a></h2><pre><code class="language-julia hljs">import Pkg
+repo_root = pwd()  # Start Julia from the repository root.
+examples_dir = joinpath(repo_root, &quot;examples&quot;)
+Pkg.activate(examples_dir)
+Pkg.develop(Pkg.PackageSpec(path=repo_root))
+Pkg.instantiate()</code></pre><h2 id="Load-the-packages"><a class="docs-heading-anchor" href="#Load-the-packages">Load the packages</a><a id="Load-the-packages-1"></a><a class="docs-heading-anchor-permalink" href="#Load-the-packages" title="Permalink"></a></h2><p>QuantumToolbox supplies the operators and reference solver; DiSLOUTrajectories.jl supplies gauge discovery and trajectory propagation. Clustering and QuantumCumulants enable the two discovery methods, and CairoMakie draws the figures.</p><pre><code class="language-julia hljs">using CairoMakie
+using Clustering
+using DiSLOUTrajectories
+using QuantumToolbox
+import QuantumCumulants</code></pre><h2 id="Define-the-Kerr-model"><a class="docs-heading-anchor" href="#Define-the-Kerr-model">Define the Kerr model</a><a id="Define-the-Kerr-model-1"></a><a class="docs-heading-anchor-permalink" href="#Define-the-Kerr-model" title="Permalink"></a></h2><p>The rotating-frame Hamiltonian and physical collapse operator are</p><p class="math-container">\[H=-\Delta a^\dagger a+\frac{K}{2}a^{\dagger 2}a^2
+  +i(\varepsilon a^\dagger-\varepsilon^*a),
+\qquad C=\sqrt{\kappa}\,a.\]</p><p>Use a Fock cutoff of <span>$N=190$</span> and the bistable drive <span>$\varepsilon=22.217$</span>. With <span>$\kappa=1$</span>, the time values below also represent <span>$\kappa t$</span>. Define the model as functions so the same expressions work with the symbolic mode used for semiclassical discovery and with <code>QuantumToolbox</code>&#39;s objects.</p><pre><code class="language-julia hljs">N = 190
+κ, Δ, K = 1.0, 13.0, 0.2
+ε = 22.217 + 0im
+
+# H (Eq. 7).
+kerr_hamiltonian(mode) =
+    -Δ * adjoint(mode) * mode +
+    (K / 2) * adjoint(mode)^2 * mode^2 +
+    im * (ε * adjoint(mode) - conj(ε) * mode)
+# C = √κ a (Eq. 7).
+kerr_collapse_operators(mode) = [sqrt(κ) * mode]</code></pre><h2 id="Discover-the-stable-gauges-and-choose-the-initial-state"><a class="docs-heading-anchor" href="#Discover-the-stable-gauges-and-choose-the-initial-state">Discover the stable gauges and choose the initial state</a><a id="Discover-the-stable-gauges-and-choose-the-initial-state-1"></a><a class="docs-heading-anchor-permalink" href="#Discover-the-stable-gauges-and-choose-the-initial-state" title="Permalink"></a></h2><p>Pass the model functions to semiclassical discovery. <code>limits</code> bounds the occupation searched for fixed points. Stable roots become gauge centers, while any unstable root remain available in the diagnostics.</p><pre><code class="language-julia hljs">sc = discover_gauges(
+    kerr_hamiltonian,
+    kerr_collapse_operators;
+    method=:semiclassical,
+    limits=(N - 1,),
+)
+
+α_saddle = only(sc.diagnostics.rejected)</code></pre><p>Now construct the operators and a coherent initial state at that saddle. This starts the evolution away from either stable center. Store the discovered shifts  for the later trajectory solves.</p><pre><code class="language-julia hljs">a = destroy(N)
+n_op = a&#39; * a
+H = kerr_hamiltonian(a)
+c_ops = kerr_collapse_operators(a)
+ψ0 = coherent(N, α_saddle)
+Z = sc.shifts
+
+(; stable_centers=sc.centers, unstable_saddle=α_saddle)</code></pre><pre><code class="language-text hljs">(stable_centers = ComplexF64[0.0726626169192963 + 1.7953859931208251im 1.7414229459815702 - 8.622402989013787im], unstable_saddle = 1.1116019736702343 + 6.939543439607241im)</code></pre><p>The stable centers are near <span>$0.0727+1.7954i$</span> and <span>$1.7414-8.6224i$</span>. The rejected fixed point near <span>$1.1116+6.9395i$</span> is the unstable saddle used for the initial coherent state. <code>Z</code> contains collapse-operator shifts <span>$\zeta^{(g)}=-\sqrt{\kappa}\alpha_g$</span>.</p><h2 id="Compare-with-trajectory-based-gauge-discovery"><a class="docs-heading-anchor" href="#Compare-with-trajectory-based-gauge-discovery">Compare with trajectory-based gauge discovery</a><a id="Compare-with-trajectory-based-gauge-discovery-1"></a><a class="docs-heading-anchor-permalink" href="#Compare-with-trajectory-based-gauge-discovery" title="Permalink"></a></h2><p>As a second way to locate the branches, we can evolve 200 preliminary trajectories and cluster their terminal amplitudes. The saved output reports two clusters and three semiclassical fixed points: the latter count includes the unstable saddle.</p><pre><code class="language-julia hljs">trajectory_gauges = discover_gauges(H, c_ops;
+    method=:trajectories,
+    mode_ops=[a],
+    mode_dims=[N],
+    discovery_time=3.0,
+    seed_radii=[sqrt(N - 1)],
+    cluster_scales=[1.0],
+    step=5.0,
+    nseeds=200,
+    terminal_window=0.0,
+    dbscan_radius=1.5,
+    min_neighbors=10,
+    min_weight=0.02,
+    seed=1,
+    ensemblealg=:threads,
+)
+
+preflight_positions = vec(trajectory_gauges.diagnostics.terminal_means)
+preflight_labels = trajectory_gauges.diagnostics.labels
+trajectory_centers = vec(trajectory_gauges.centers)
+semiclassical_points = vec(sc.diagnostics.roots)
+
+(; preflight_trajectories=length(preflight_positions),
+    trajectory_gauges=length(trajectory_centers),
+    semiclassical_solutions=length(semiclassical_points))</code></pre><pre><code class="language-text hljs">(preflight_trajectories = 200, trajectory_gauges = 2, semiclassical_solutions = 3)</code></pre><p>Plot the preliminary trajectory endpoints, the cluster centers, and all semiclassical fixed points in the complex-amplitude plane.</p><pre><code class="language-julia hljs">fig_gauges = Figure(size=(700, 550))
+ax_gauges = Axis(fig_gauges[1, 1];
+    xlabel=&quot;Re⟨a⟩&quot;, ylabel=&quot;Im⟨a⟩&quot;,
+    title=&quot;Trajectory and semiclassical gauge discovery&quot;,
+    aspect=DataAspect())
+
+scatter!(ax_gauges, real.(preflight_positions), imag.(preflight_positions);
+    color=preflight_labels, colormap=:tab10, markersize=8,
+    label=&quot;Final preflight positions&quot;)
+scatter!(ax_gauges, real.(trajectory_centers), imag.(trajectory_centers);
+    marker=:circle, markersize=22, color=:transparent,
+    strokecolor=:black, strokewidth=2,
+    label=&quot;Trajectory-deduced gauges&quot;)
+scatter!(ax_gauges, real.(semiclassical_points), imag.(semiclassical_points);
+    marker=:xcross, markersize=20, color=:red, strokewidth=3,
+    label=&quot;Semiclassical solutions&quot;)
+axislegend(ax_gauges; position=:lt)
+fig_gauges</code></pre><p><img src="../../assets/examples/kerr_resonator/gauge-discovery.png" alt="Trajectory endpoints and discovered centers in the Kerr resonator complex-amplitude plane."/></p><p>The two endpoint clusters identify the dim and bright branches. Compare their centers with the stable semiclassical roots: finite pilot trajectories and quantum fluctuations need not give exactly the same centers but in this case they are very close.</p><h2 id="Evolve-the-ensemble-and-a-reference-solution"><a class="docs-heading-anchor" href="#Evolve-the-ensemble-and-a-reference-solution">Evolve the ensemble and a reference solution</a><a id="Evolve-the-ensemble-and-a-reference-solution-1"></a><a class="docs-heading-anchor-permalink" href="#Evolve-the-ensemble-and-a-reference-solution" title="Permalink"></a></h2><p>First use <code>mesolve</code> for the deterministic master-equation reference, then <code>dislou_solve</code> for 512 trajectories with Layers I and II. Both receive the same physical <code>H</code>, <code>c_ops</code>, initial state, and photon-number observable. Do not shift the physical operators yourself: DiSLOU applies the gauge transformation.</p><p>Save ensemble states at three times and retain individual trajectories so we can inspect their observables and Wigner functions below.</p><pre><code class="language-julia hljs">tlist = collect(range(0.0, 5.0; length=201))
+snapshot_times = [0.0, 2.5, 5.0]
+ntraj = 512
+ensemble_seed = 20260829
+
+mesolve_sol = mesolve(H, ψ0, tlist, c_ops;
+    e_ops=[n_op],
+    progress_bar=false,
+    reltol=1e-8,
+    abstol=1e-10,
+)
+
+sol = dislou_solve(H, ψ0, tlist, c_ops;
+    e_ops=[n_op],
+    gauge_set=Z,
+    ntraj=ntraj,
+    ensemblealg=:threads,
+    seed=ensemble_seed,
+    saveat=snapshot_times,
+    save_trajectories=true,
+    save_final_states=true,
+)</code></pre><pre><code class="language-text hljs">DiSLOUSolution(ntraj=512, Ne=1, Nt=201, total_jumps=36950)</code></pre><h3 id="Read-the-photon-number-dynamics"><a class="docs-heading-anchor" href="#Read-the-photon-number-dynamics">Read the photon-number dynamics</a><a id="Read-the-photon-number-dynamics-1"></a><a class="docs-heading-anchor-permalink" href="#Read-the-photon-number-dynamics" title="Permalink"></a></h3><p><code>expect_mean(sol)</code> and <code>expect_sem(sol)</code> return the ensemble mean and its standard error for the first observable, here photon number. Plot those against <code>mesolve</code>, then show six individual trajectories below. The shaded band describes uncertainty in the ensemble mean.</p><pre><code class="language-julia hljs">n_mean = real.(expect_mean(sol))
+n_sem = expect_sem(sol)
+n_mesolve = real.(mesolve_sol.expect[1, :])
+selected_trajectories = 1:6
+
+fig_n = Figure(size=(900, 700))
+ax_mean = Axis(fig_n[1, 1]; xlabel=&quot;κt&quot;, ylabel=&quot;⟨a†a⟩&quot;,
+    title=&quot;Ensemble photon number and master-equation reference&quot;)
+band!(ax_mean, tlist, n_mean .- n_sem, n_mean .+ n_sem;
+    color=(:steelblue, 0.25), label=&quot;DiSLOU standard error&quot;)
+lines!(ax_mean, tlist, n_mean;
+    color=:steelblue, linewidth=2, label=&quot;DiSLOU mean&quot;)
+lines!(ax_mean, tlist, n_mesolve;
+    color=:black, linestyle=:dash, linewidth=2, label=&quot;mesolve&quot;)
+axislegend(ax_mean; position=:lt)
+
+ax_traj = Axis(fig_n[2, 1]; xlabel=&quot;κt&quot;, ylabel=&quot;⟨a†a⟩&quot;,
+    title=&quot;Six individual trajectories&quot;)
+for trajectory in selected_trajectories
+    lines!(ax_traj, tlist, real.(sol.trajectory_expect[1, trajectory, :]);
+        label=&quot;trajectory $trajectory&quot;)
+end
+axislegend(ax_traj; position=:rt, nbanks=2)
+fig_n</code></pre><p><img src="../../assets/examples/kerr_resonator/photon-number.png" alt="Kerr ensemble photon number with standard error and master-equation reference, above six individual trajectories."/></p><p>The ensemble follows the oscillatory relaxation of the master-equation reference, while individual trajectories separate toward the two branches, clearly showing the bistable nature of the model.</p><h2 id="Inspect-ensemble-and-trajectory-Wigner-functions"><a class="docs-heading-anchor" href="#Inspect-ensemble-and-trajectory-Wigner-functions">Inspect ensemble and trajectory Wigner functions</a><a id="Inspect-ensemble-and-trajectory-Wigner-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Inspect-ensemble-and-trajectory-Wigner-functions" title="Permalink"></a></h2><p>At the final saved time, compare the reconstructed ensemble state with trajectories 1–3. These are different views of the same simulation: the ensemble combines all trajectories, while each other panel shows one conditional state.</p><pre><code class="language-julia hljs">xvec = collect(range(-10.0, 10.0; length=201))
+yvec = collect(range(-15.0, 5.0; length=201))
+time_index = length(snapshot_times)
+scaled_snapshot_time = κ * snapshot_times[time_index]
+
+wigner_states = (
+    sol.states[time_index],
+    sol.trajectory_states[1, time_index],
+    sol.trajectory_states[2, time_index],
+    sol.trajectory_states[3, time_index],
+)
+wigner_values = map(
+    state -&gt; wigner(state, xvec, yvec),
+    wigner_states,
+)
+
+wigner_plots = transpose.(wigner_values)
+for W in wigner_plots
+    @assert size(W) == (length(xvec), length(yvec))
+    peak = Tuple(argmax(abs.(W)))
+    # @assert 1 &lt; peak[1] &lt; length(xvec)
+    # @assert 1 &lt; peak[2] &lt; length(yvec)
+end
+
+color_limit = maximum(maximum(abs, W) for W in wigner_values)
+panel_positions = ((1, 1), (1, 2), (2, 1), (2, 2))
+panel_titles = (
+    &quot;Ensemble at κt = $scaled_snapshot_time&quot;,
+    &quot;Trajectory 1 at κt = $scaled_snapshot_time&quot;,
+    &quot;Trajectory 2 at κt = $scaled_snapshot_time&quot;,
+    &quot;Trajectory 3 at κt = $scaled_snapshot_time&quot;,
+)
+
+fig_w = Figure(size=(600, 500))
+heatmaps = Any[]
+for (position, title, W) in zip(panel_positions, panel_titles, wigner_plots)
+    row, column = position
+    ax = Axis(fig_w[row, column];
+        xlabel=&quot;x&quot;, ylabel=&quot;y&quot;, title, aspect=DataAspect())
+    push!(heatmaps, heatmap!(ax, xvec, yvec, W;
+        colormap=:balance, colorrange=(-color_limit, color_limit)))
+end
+Colorbar(fig_w[:, 3], first(heatmaps); label=&quot;W(x, y)&quot;)
+fig_w</code></pre><p><img src="../../assets/examples/kerr_resonator/wigner.png" alt="Kerr ensemble and three individual-trajectory Wigner functions at the final saved time."/></p><p>The ensemble panel contains contributions from both branches. while the three individual panels show which region each selected trajectory occupies at the final time: they are all close to one of the metastable states.</p><h2 id="Enable-Layer-III"><a class="docs-heading-anchor" href="#Enable-Layer-III">Enable Layer III</a><a id="Enable-Layer-III-1"></a><a class="docs-heading-anchor-permalink" href="#Enable-Layer-III" title="Permalink"></a></h2><p>Repeat the solve with the same state, gauges, trajectory count, and seed, adding the reduced-space options. The entries of <code>layer3_sizes</code> follow the gauge columns: <span>$m^{(-)}=20$</span> for the dim branch and <span>$m^{(+)}=60$</span> for the bright branch.</p><p>The residual tolerance <span>$r_{\rm tol}=10^{-4}$</span> controls acceptance of a projection into a reduced space, as in Eq. (21). The solver falls back to the full basis when the projection residual goes above it.</p><pre><code class="language-julia hljs">layer3_sol = dislou_solve(H, ψ0, tlist, c_ops;
+    e_ops=[n_op],
+    gauge_set=Z,
+    ntraj=ntraj,
+    ensemblealg=:threads,
+    seed=ensemble_seed,
+    layer3=true,
+    layer3_sizes=[20, 60],
+    residual_tolerance=1e-4,
+)</code></pre><pre><code class="language-text hljs">DiSLOUSolution(ntraj=512, Ne=1, Nt=201, total_jumps=40523)</code></pre><p>Overlay the Layer III result with Layers I and II and <code>mesolve</code>, keeping the standard-error bands for both ensembles.</p><pre><code class="language-julia hljs">n_layer3 = real.(expect_mean(layer3_sol))
+n_layer3_sem = expect_sem(layer3_sol)
+
+fig_validation = Figure(size=(900, 450))
+ax_validation = Axis(fig_validation[1, 1];
+    xlabel=&quot;κt&quot;, ylabel=&quot;⟨a†a⟩&quot;,
+    title=&quot;Layers I + II, Layer III, and mesolve&quot;)
+band!(ax_validation, tlist, n_mean .- n_sem, n_mean .+ n_sem;
+    color=(:steelblue, 0.18))
+band!(ax_validation, tlist,
+    n_layer3 .- n_layer3_sem, n_layer3 .+ n_layer3_sem;
+    color=(:darkorange, 0.18))
+lines!(ax_validation, tlist, n_mean;
+    color=:steelblue, linewidth=2, label=&quot;Layers I + II&quot;)
+lines!(ax_validation, tlist, n_layer3;
+    color=:darkorange, linewidth=2, label=&quot;Layer III&quot;)
+lines!(ax_validation, tlist, n_mesolve;
+    color=:black, linestyle=:dash, linewidth=2, label=&quot;mesolve&quot;)
+axislegend(ax_validation; position=:lt)
+fig_validation</code></pre><p><img src="../../assets/examples/kerr_resonator/layer3.png" alt="Kerr photon-number comparison for Layers I and II, Layer III, and the master equation."/></p><p>The comparison confirms that the reduced and full-space ensemble curves track the same reference dynamics.</p><p>Continue with the <a href="../two_mode_ideal_cat/">two-mode ideal cat</a> to apply the same workflow to multiple modes and jump operators.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Overview</a><a class="docs-footer-nextpage" href="../two_mode_ideal_cat/">Two-mode ideal cat »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Tuesday 22 September 2026 08:16">Tuesday 22 September 2026</span>. Using Julia version 1.13.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

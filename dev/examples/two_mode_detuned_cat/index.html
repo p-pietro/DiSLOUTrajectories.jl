@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Two-mode detuned cat · DiSLOUTrajectories.jl</title><meta name="title" content="Two-mode detuned cat · DiSLOUTrajectories.jl"/><meta property="og:title" content="Two-mode detuned cat · DiSLOUTrajectories.jl"/><meta property="twitter:title" content="Two-mode detuned cat · DiSLOUTrajectories.jl"/><meta name="description" content="Documentation for DiSLOUTrajectories.jl."/><meta property="og:description" content="Documentation for DiSLOUTrajectories.jl."/><meta property="twitter:description" content="Documentation for DiSLOUTrajectories.jl."/><meta property="og:url" content="https://alice-bob-sw.github.io/DiSLOUTrajectories.jl/examples/two_mode_detuned_cat/"/><meta property="twitter:url" content="https://alice-bob-sw.github.io/DiSLOUTrajectories.jl/examples/two_mode_detuned_cat/"/><link rel="canonical" href="https://alice-bob-sw.github.io/DiSLOUTrajectories.jl/examples/two_mode_detuned_cat/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.63.2/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img class="docs-light-only" src="../../assets/logo.svg" alt="DiSLOUTrajectories.jl logo"/><img class="docs-dark-only" src="../../assets/logo-dark.svg" alt="DiSLOUTrajectories.jl logo"/></a><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><span class="tocitem">Home</span><ul><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../getting_started/installation/">Installation</a></li><li><a class="tocitem" href="../../getting_started/quickstart/">Quick start</a></li><li><a class="tocitem" href="../../getting_started/cite/">Cite</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../">Overview</a></li><li><a class="tocitem" href="../kerr_resonator/">Driven Kerr resonator</a></li><li><a class="tocitem" href="../two_mode_ideal_cat/">Two-mode ideal cat</a></li><li class="is-active"><a class="tocitem" href>Two-mode detuned cat</a><ul class="internal"><li><a class="tocitem" href="#Prepare-the-environment"><span>Prepare the environment</span></a></li><li><a class="tocitem" href="#Load-the-packages-and-steady-state-helper"><span>Load the packages and steady-state helper</span></a></li><li><a class="tocitem" href="#Detuned-memory-buffer-model"><span>Detuned memory-buffer model</span></a></li><li><a class="tocitem" href="#Semiclassical-gauges"><span>Semiclassical gauges</span></a></li><li><a class="tocitem" href="#Exact-steady-state-Wigner-functions"><span>Exact steady-state Wigner functions</span></a></li><li><a class="tocitem" href="#Layers-I-and-II"><span>Layers I and II</span></a></li><li><a class="tocitem" href="#Memory-mode-Wigner-snapshots"><span>Memory-mode Wigner snapshots</span></a></li><li><a class="tocitem" href="#Layer-III"><span>Layer III</span></a></li></ul></li></ul></li><li><a class="tocitem" href="../../api/">API reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Two-mode detuned cat</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Two-mode detuned cat</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/Alice-Bob-SW/DiSLOUTrajectories.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/Alice-Bob-SW/DiSLOUTrajectories.jl/blob/main/docs/src/examples/two_mode_detuned_cat.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Two-mode-detuned-cat"><a class="docs-heading-anchor" href="#Two-mode-detuned-cat">Two-mode detuned cat</a><a id="Two-mode-detuned-cat-1"></a><a class="docs-heading-anchor-permalink" href="#Two-mode-detuned-cat" title="Permalink"></a></h1><p>Here we consider a realistic example of a two-mode parametrically coupled driven-dissipative system, including non-linearities and detuning terms. The Hamiltonian and collapse-operator conventions follow Section 5.2 of the <a href="../../getting_started/cite/">paper</a>.</p><p>Run the code blocks in order in one Julia session, starting from the repository root. See <a href="../#Running-the-examples">Running the examples</a> for the environment setup.</p><ul><li><a href="#Prepare-the-environment">Prepare the environment</a></li><li><a href="#Load-the-packages-and-steady-state-helper">Load the packages and steady-state helper</a></li><li><a href="#Detuned-memory-buffer-model">Detuned memory-buffer model</a></li><li><a href="#Semiclassical-gauges">Semiclassical gauges</a></li><li><a href="#Exact-steady-state-Wigner-functions">Exact steady-state Wigner functions</a></li><li><a href="#Layers-I-and-II">Layers I and II</a></li><li class="no-marker"><ul><li><a href="#Read-the-observables">Read the observables</a></li></ul></li><li><a href="#Memory-mode-Wigner-snapshots">Memory-mode Wigner snapshots</a></li><li><a href="#Layer-III">Layer III</a></li></ul><h2 id="Prepare-the-environment"><a class="docs-heading-anchor" href="#Prepare-the-environment">Prepare the environment</a><a id="Prepare-the-environment-1"></a><a class="docs-heading-anchor-permalink" href="#Prepare-the-environment" title="Permalink"></a></h2><pre><code class="language-julia hljs">import Pkg
+repo_root = pwd()  # Start Julia from the repository root.
+examples_dir = joinpath(repo_root, &quot;examples&quot;)
+Pkg.activate(examples_dir)
+Pkg.develop(Pkg.PackageSpec(path=repo_root))
+Pkg.instantiate()</code></pre><h2 id="Load-the-packages-and-steady-state-helper"><a class="docs-heading-anchor" href="#Load-the-packages-and-steady-state-helper">Load the packages and steady-state helper</a><a id="Load-the-packages-and-steady-state-helper-1"></a><a class="docs-heading-anchor-permalink" href="#Load-the-packages-and-steady-state-helper" title="Permalink"></a></h2><p>Before running this page, install the additional helper dependencies listed under <a href="../#Detuned-cat-dependencies">Detuned-cat dependencies</a>. The helper is included from the example environment created above.</p><pre><code class="language-julia hljs">using CairoMakie
+using DiSLOUTrajectories
+using LinearAlgebra
+using Printf
+using QuantumToolbox
+import QuantumCumulants
+
+include(joinpath(examples_dir, &quot;exact_steady_state.jl&quot;))
+using .ExactSteadyState: exact_steadystate, semiclassical_fixed_points
+
+const QUICK = false
+const CF = ComplexF64</code></pre><pre><code class="language-text hljs">ComplexF64[90m (alias for [39m[90mComplex{Float64}[39m[90m)[39m</code></pre><h2 id="Detuned-memory-buffer-model"><a class="docs-heading-anchor" href="#Detuned-memory-buffer-model">Detuned memory-buffer model</a><a id="Detuned-memory-buffer-model-1"></a><a class="docs-heading-anchor-permalink" href="#Detuned-memory-buffer-model" title="Permalink"></a></h2><p>The Hamiltonian follows Eq. (24), with <span>$n_a=a^\dagger a$</span>, <span>$n_b=b^\dagger b$</span>, and real <span>$\varepsilon_b$</span>. This example uses its own numerical parameters and Fock cutoffs <span>$N_a=65$</span>, <span>$N_b=14$</span>, which differ from Section 5.2; setting <code>QUICK=true</code> uses smaller cutoffs.</p><p class="math-container">\[H=\Delta_a n_a+\Delta_b n_b-\frac{K_a}{2} a^{\dagger2}a^2-\frac{K_b}{2} b^{\dagger2}b^2-\frac{\chi}{2} n_an_b+g_2(a^2b^\dagger+a^{\dagger2}b)+\varepsilon_b(b+b^\dagger).\]</p><p>The loss channels are <span>$C_1=\sqrt{\kappa_1}a$</span> and <span>$C_b=\sqrt{\kappa_b}b$</span> (Eq. 25), with <span>$\kappa_\phi=0$</span>. The code&#39;s <code>cfg.κa</code> denotes the memory loss rate <span>$\kappa_1$</span>.</p><pre><code class="language-julia hljs">full_dims = (65, 14)
+Na, Nb = QUICK ? (12, 5) : full_dims
+cfg = (;
+    Na, Nb,
+    Δa=-0.5, Δb=41.0,
+    Ka=-0.1, Kb=-1.5, χ=-0.75,
+    g2=1.5, εb=6.8 + 0im,
+    κa=5e-3, κb=15.0,
+)
+
+# H (Eq. 24).
+function hamiltonian(a, b)
+    na, nb = a&#39; * a, b&#39; * b
+    H = cfg.Δa * na + cfg.Δb * nb
+    H += -cfg.Ka / 2 * (a&#39;^2 * a^2)
+    H += -cfg.Kb / 2 * (b&#39;^2 * b^2)
+    H += -cfg.χ / 2 * na * nb
+    H += cfg.g2 * (a^2 * b&#39; + a&#39;^2 * b)
+    H += cfg.εb * (b + b&#39;)
+    H
+end
+# C₁, C_b (Eq. 25); cfg.κa denotes κ₁.
+collapse_operators(a, b) = [sqrt(cfg.κa) * a, sqrt(cfg.κb) * b]
+
+a = tensor(destroy(Na), qeye(Nb))
+b = tensor(qeye(Na), destroy(Nb))
+na, nb = a&#39; * a, b&#39; * b
+xa = (a + a&#39;) / sqrt(2)
+H = hamiltonian(a, b)
+c_ops = collapse_operators(a, b)
+@assert size(H.data) == (Na * Nb, Na * Nb)
+(; Na, Nb, dimension=Na * Nb)</code></pre><pre><code class="language-text hljs">(Na = 65, Nb = 14, dimension = 910)</code></pre><h2 id="Semiclassical-gauges"><a class="docs-heading-anchor" href="#Semiclassical-gauges">Semiclassical gauges</a><a id="Semiclassical-gauges-1"></a><a class="docs-heading-anchor-permalink" href="#Semiclassical-gauges" title="Permalink"></a></h2><p>The symbolic mean-field equations have five fixed points: three stable centers <span>$(\alpha_g,\beta_g)$</span> defining <span>$\zeta_\mu^{(g)}$</span> through Eq. (A.6) and two unstable saddles.</p><pre><code class="language-julia hljs">semiclassical_limits = (full_dims[1] - 1, full_dims[2] - 1)
+gauge_limits = QUICK ? (Na - 1, Nb - 1) : semiclassical_limits
+semiclassical = semiclassical_fixed_points(
+    hamiltonian, collapse_operators; limits=semiclassical_limits)
+sc = discover_gauges(
+    hamiltonian,
+    collapse_operators;
+    method=:semiclassical,
+    limits=gauge_limits,
+)
+
+nstable = count(point -&gt; point.stable, semiclassical)
+nunstable = length(semiclassical) - nstable
+stable_points = filter(point -&gt; point.stable, semiclassical)
+stable_branches = sort(stable_points; by=point -&gt; (abs2(point.b), real(point.a)))
+branch_centers = CF[getproperty(point, field) for field in (:a, :b), point in stable_branches]
+(; fixed_points=length(semiclassical), stable=nstable, gauges=size(sc.centers, 2))</code></pre><pre><code class="language-text hljs">(fixed_points = 5, stable = 3, gauges = 3)</code></pre><h2 id="Exact-steady-state-Wigner-functions"><a class="docs-heading-anchor" href="#Exact-steady-state-Wigner-functions">Exact steady-state Wigner functions</a><a id="Exact-steady-state-Wigner-functions-1"></a><a class="docs-heading-anchor-permalink" href="#Exact-steady-state-Wigner-functions" title="Permalink"></a></h2><p>The stationary density matrix <span>$\rho_{\rm ss}$</span>, satisfying <span>$\dot\rho=0$</span> in Eq. (1) and <span>$\operatorname{Tr}\rho_{\rm ss}=1$</span>, is obtained directly from Liouvillian. Black crosses mark stable semiclassical solutions and orange crosses mark unstable ones.</p><pre><code class="language-julia hljs">ss = exact_steadystate(H, c_ops; mode_dims=(Na, Nb), parity_mode=1)
+ρss = ss.state
+ρa_ss, ρb_ss = ptrace(ρss, 1), ptrace(ρss, 2)
+grid_points = QUICK ? 41 : 241
+qa = collect(range(-8.0, 8.0; length=grid_points))
+pa = copy(qa)
+qb = collect(range(-7.5, 7.5; length=grid_points))
+pb = copy(qb)
+Wa_ss = permutedims(wigner(ρa_ss, qa, pa))
+Wb_ss = permutedims(wigner(ρb_ss, qb, pb))
+
+# α_g or β_g, deduplicated for plotting.
+function projected_amplitudes(points, field, stable; tol=1e-7)
+    values = ComplexF64[]
+    for point in points
+        point.stable == stable || continue
+        value = getproperty(point, field)
+        all(abs(value - previous) &gt; tol for previous in values) &amp;&amp; push!(values, value)
+    end
+    values
+end
+
+function wigner_panel!(layout, xs, ys, W, points, field, title, label)
+    ax = Axis(layout[1, 1]; xlabel=field === :a ? &quot;memory q&quot; : &quot;buffer q&quot;,
+        ylabel=field === :a ? &quot;memory p&quot; : &quot;buffer p&quot;, aspect=DataAspect(), title)
+    scale = max(maximum(abs, W), 1e-12)
+    hm = heatmap!(ax, xs, ys, W; colormap=:balance, colorrange=(-scale, scale))
+    stable = projected_amplitudes(points, field, true)
+    unstable = projected_amplitudes(points, field, false)
+    scatter!(ax, sqrt(2) .* real.(stable), sqrt(2) .* imag.(stable);
+        marker=:xcross, markersize=20, color=:black)
+    scatter!(ax, sqrt(2) .* real.(unstable), sqrt(2) .* imag.(unstable);
+        marker=:xcross, markersize=14, color=:darkorange)
+    Colorbar(layout[1, 2], hm; label)
+end
+
+fig_steady_state_wigner = Figure(size=(1320, 650), fontsize=16)
+wigner_panel!(fig_steady_state_wigner[1, 1:2], qa, pa, Wa_ss, semiclassical, :a,
+    &quot;Memory steady-state Wigner&quot;, &quot;Wₐ&quot;)
+wigner_panel!(fig_steady_state_wigner[1, 3:4], qb, pb, Wb_ss, semiclassical, :b,
+    &quot;Buffer steady-state Wigner&quot;, &quot;Wᵦ&quot;)
+Legend(fig_steady_state_wigner[2, 1:4],
+    [MarkerElement(marker=:xcross, markersize=20, color=:black),
+     MarkerElement(marker=:xcross, markersize=14, color=:darkorange)],
+    [&quot;stable semiclassical&quot;, &quot;unstable semiclassical&quot;];
+    orientation=:horizontal, framevisible=false)
+Label(fig_steady_state_wigner[0, 1:4], @sprintf(
+    &quot;Exact %s steady state; residuals %.2e / %.2e&quot;, uppercase(String(ss.backend)),
+    ss.diagnostics.scaled_relative_residual,
+    ss.diagnostics.relative_liouvillian_residual); fontsize=19, font=:bold)
+fig_steady_state_wigner</code></pre><p><img src="../../assets/examples/two_mode_detuned_cat/steady-state.png" alt="Detuned-cat stationary memory and buffer Wigner functions, with stable and unstable semiclassical centers."/></p><h2 id="Layers-I-and-II"><a class="docs-heading-anchor" href="#Layers-I-and-II">Layers I and II</a><a id="Layers-I-and-II-1"></a><a class="docs-heading-anchor-permalink" href="#Layers-I-and-II" title="Permalink"></a></h2><p>Start in the positive-memory high branch and evolve the memory quadrature and both occupations using the three semiclassical gauges.</p><pre><code class="language-julia hljs">αplus, βplus = branch_centers[:, 3]
+ψ0 = tensor(coherent(Na, αplus), coherent(Nb, βplus))
+tlist = QUICK ? [0.0, 0.5, 1.0] : collect(0.0:5.0:150.0)
+snapshot_times = QUICK ? [0.0, 0.5, 1.0] : [0.0, 75.0, 150.0]
+ntraj = QUICK ? 4 : 1024
+ensemble_seed = 20260831
+
+sol = dislou_solve(
+    H,
+    ψ0,
+    tlist,
+    c_ops;
+    e_ops=[xa, na, nb],
+    gauge_set=sc,
+    ntraj,
+    ensemblealg=:threads,
+    seed=ensemble_seed,
+    saveat=snapshot_times,
+    save_trajectories=true,
+)</code></pre><pre><code class="language-text hljs">DiSLOUSolution(ntraj=1024, Ne=3, Nt=31, total_jumps=175830)</code></pre><h3 id="Read-the-observables"><a class="docs-heading-anchor" href="#Read-the-observables">Read the observables</a><a id="Read-the-observables-1"></a><a class="docs-heading-anchor-permalink" href="#Read-the-observables" title="Permalink"></a></h3><p>Plot the memory quadrature and both occupations with standard-error bands, alongside six individual memory-quadrature trajectories.</p><pre><code class="language-julia hljs">observable_mean = real.(sol.expect)
+observable_sem = sol.expect_sem
+fig_observables = Figure(size=(950, 850))
+labels = [&quot;⟨xₐ⟩&quot;, &quot;⟨nₐ⟩&quot;, &quot;⟨nᵦ⟩&quot;]
+titles = [&quot;Memory quadrature&quot;, &quot;Memory occupation&quot;, &quot;Buffer occupation&quot;]
+for observable in 1:3
+    ax = Axis(fig_observables[observable, 1]; xlabel=&quot;t (μs)&quot;,
+        ylabel=labels[observable], title=titles[observable])
+    band!(ax, tlist, observable_mean[observable, :] .- observable_sem[observable, :],
+        observable_mean[observable, :] .+ observable_sem[observable, :];
+        color=(:steelblue, 0.25))
+    lines!(ax, tlist, observable_mean[observable, :]; color=:steelblue, linewidth=2)
+end
+ax_trajectories = Axis(fig_observables[1:3, 2]; xlabel=&quot;t (μs)&quot;, ylabel=&quot;⟨xₐ⟩&quot;,
+    title=&quot;Individual trajectories&quot;)
+for trajectory in 1:min(6, ntraj)
+    lines!(ax_trajectories, tlist, real.(sol.trajectory_expect[1, trajectory, :]);
+        label=&quot;trajectory $trajectory&quot;)
+end
+axislegend(ax_trajectories; position=:rb)
+fig_observables</code></pre><p><img src="../../assets/examples/two_mode_detuned_cat/observables.png" alt="Detuned-cat mean memory quadrature and occupations with standard errors, alongside individual trajectories."/></p><h2 id="Memory-mode-Wigner-snapshots"><a class="docs-heading-anchor" href="#Memory-mode-Wigner-snapshots">Memory-mode Wigner snapshots</a><a id="Memory-mode-Wigner-snapshots-1"></a><a class="docs-heading-anchor-permalink" href="#Memory-mode-Wigner-snapshots" title="Permalink"></a></h2><p>Trace out the buffer from the saved ensemble density matrices and compare the memory Wigner function at the initial, intermediate, and final times.</p><pre><code class="language-julia hljs">xvec = collect(range(-8.0, 8.0; length=QUICK ? 41 : 161))
+yvec = copy(xvec)
+memory_states = [ptrace(state, 1) for state in sol.states]
+wigner_values = [permutedims(wigner(state, xvec, yvec)) for state in memory_states]
+color_limit = maximum(maximum(abs, W) for W in wigner_values)
+
+fig_wigner = Figure(size=(1050, 330))
+heatmaps = Any[]
+for (column, time, W) in zip(1:3, snapshot_times, wigner_values)
+    ax = Axis(fig_wigner[1, column]; xlabel=&quot;q&quot;, ylabel=&quot;p&quot;,
+        title=&quot;t = $time μs&quot;, aspect=DataAspect())
+    push!(heatmaps, heatmap!(ax, xvec, yvec, W; colormap=:balance,
+        colorrange=(-color_limit, color_limit)))
+end
+Colorbar(fig_wigner[1, 4], first(heatmaps); label=&quot;Wₐ(q, p)&quot;)
+fig_wigner</code></pre><p><img src="../../assets/examples/two_mode_detuned_cat/wigner.png" alt="Detuned-cat memory-mode ensemble Wigner functions at three saved times."/></p><h2 id="Layer-III"><a class="docs-heading-anchor" href="#Layer-III">Layer III</a><a id="Layer-III-1"></a><a class="docs-heading-anchor-permalink" href="#Layer-III" title="Permalink"></a></h2><p>Use <span>$m^{(l)}=200$</span> and <span>$m^{(\pm)}=400$</span> with residual tolerance <span>$r_{\rm tol}=10^{-4}$</span> (Eq. 21); <code>QUICK</code> uses 20 slow modes per gauge.</p><pre><code class="language-julia hljs">layer3_sizes = QUICK ? fill(20, size(sc.centers, 2)) : [200, 400, 400]
+layer3_sol = dislou_solve(
+    H,
+    ψ0,
+    tlist,
+    c_ops;
+    e_ops=[xa, na, nb],
+    gauge_set=sc,
+    ntraj,
+    ensemblealg=:threads,
+    seed=ensemble_seed,
+    layer3=true,
+    layer3_sizes,
+    residual_tolerance=1e-4,
+)</code></pre><pre><code class="language-text hljs">DiSLOUSolution(ntraj=1024, Ne=3, Nt=31, total_jumps=175835)</code></pre><p>Overlay the memory-quadrature means and standard-error bands from the full-space and reduced runs. The steady-state Wigner calculation above is a stationary reference, while this plot compares two trajectory evolutions.</p><pre><code class="language-julia hljs">layer3_mean = real.(layer3_sol.expect)
+layer3_sem = layer3_sol.expect_sem
+fig_validation = Figure(size=(900, 450))
+ax_validation = Axis(fig_validation[1, 1]; xlabel=&quot;t (μs)&quot;, ylabel=&quot;⟨xₐ⟩&quot;,
+    title=&quot;Layers I + II and Layer III&quot;)
+band!(ax_validation, tlist, observable_mean[1, :] .- observable_sem[1, :],
+    observable_mean[1, :] .+ observable_sem[1, :]; color=(:steelblue, 0.18))
+band!(ax_validation, tlist, layer3_mean[1, :] .- layer3_sem[1, :],
+    layer3_mean[1, :] .+ layer3_sem[1, :]; color=(:darkorange, 0.18))
+lines!(ax_validation, tlist, observable_mean[1, :]; color=:steelblue, linewidth=2,
+    label=&quot;Layers I + II&quot;)
+lines!(ax_validation, tlist, layer3_mean[1, :]; color=:darkorange, linewidth=2,
+    label=&quot;Layer III&quot;)
+axislegend(ax_validation; position=:lb)
+fig_validation</code></pre><p><img src="../../assets/examples/two_mode_detuned_cat/layer3.png" alt="Detuned-cat memory-quadrature comparison for Layers I and II and Layer III."/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../two_mode_ideal_cat/">« Two-mode ideal cat</a><a class="docs-footer-nextpage" href="../../api/">API reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Tuesday 22 September 2026 08:16">Tuesday 22 September 2026</span>. Using Julia version 1.13.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
