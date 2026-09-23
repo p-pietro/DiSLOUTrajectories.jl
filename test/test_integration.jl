@@ -12,7 +12,7 @@ isdefined(Main, :DrivenKerrParams) ||
     sol = dislou_solve(
         H, psi0, tlist, c_ops;
         e_ops, gauge_set = zeros(ComplexF64, 1, 1), ntraj = 1_500,
-        seed = 71, ensemblealg = :serial
+        rng = Xoshiro(71), ensemblealg = :serial
     )
     exact = mesolve(
         H, psi0, tlist, c_ops;
@@ -32,20 +32,19 @@ end
         e_ops = [num(d)],
         gauge_set = zeros(ComplexF64, 1, 1),
         ntraj = 32,
-        seed = 77,
         ensemblealg = :serial,
     )
     direct = dislou_solve(
         0.1 * (a + a'), fock(d, 2), tlist, [0.9 * a];
-        common..., first_passage_method = :survival
+        common..., rng = Xoshiro(77), first_passage_method = :survival
     )
     logarithmic = dislou_solve(
         0.1 * (a + a'), fock(d, 2), tlist, [0.9 * a];
-        common..., first_passage_method = :log_survival
+        common..., rng = Xoshiro(77), first_passage_method = :log_survival
     )
     predictor = dislou_solve(
         0.1 * (a + a'), fock(d, 2), tlist, [0.9 * a];
-        common..., first_passage_method = :log_survival_predictor
+        common..., rng = Xoshiro(77), first_passage_method = :log_survival_predictor
     )
 
     @test direct.col_which == logarithmic.col_which == predictor.col_which
@@ -69,7 +68,7 @@ end
     tlist = collect(0.0:0.25:2.0)
     sol = dislou_solve(
         model.H, model.ψ0, tlist, model.c_ops;
-        e_ops, gauge_set, ntraj = 2_000, seed = 71, ensemblealg = :serial
+        e_ops, gauge_set, ntraj = 2_000, rng = Xoshiro(71), ensemblealg = :serial
     )
     exact = mesolve(
         model.H, model.ψ0, tlist, model.c_ops;

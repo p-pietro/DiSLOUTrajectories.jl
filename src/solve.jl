@@ -1,11 +1,5 @@
 # Top-level user-facing entry point.
 
-function _validated_seed(seed::Integer)
-    0 <= seed <= typemax(UInt64) ||
-        throw(ArgumentError("seed must be in 0:typemax(UInt64)"))
-    return UInt64(seed)
-end
-
 function _validated_tlist(tlist)
     tlist isa AbstractString && throw(ArgumentError("tlist must be a nonempty iterable of times"))
     tl = try
@@ -44,13 +38,13 @@ function _validated_saveat(saveat, tlist::Vector{Float64})
     return values
 end
 
-function _validate_ensemble_options(ntraj::Int, ensemblealg::Symbol, seed::Integer)
+function _validate_ensemble_options(ntraj::Int, ensemblealg::Symbol)
     ntraj > 0 || throw(ArgumentError("ntraj must be positive"))
     ensemblealg in (:serial, :threads, :distributed) ||
         throw(ArgumentError("ensemblealg must be :serial, :threads, or :distributed, got $ensemblealg"))
     ensemblealg === :distributed && nprocs() <= 1 &&
         throw(ArgumentError("ensemblealg=:distributed requires worker processes"))
-    return _validated_seed(seed)
+    return nothing
 end
 
 function _validated_hysteresis(hysteresis::Real)
@@ -216,8 +210,10 @@ and falls back to the full space if the projection residual is higher than the s
 - `ensemblealg::Symbol`: Trajectory execution mode: `:serial`, `:threads` (default),
   or `:distributed`. Distributed execution requires worker processes with
   DiSLOUTrajectories available; add workers and load DiSLOUTrajectories on them before solving.
-- `seed::Integer`: Integer in `0:typemax(UInt64)` used to derive a random stream for
-  each trajectory. Defaults to `0`.
+- `rng::AbstractRNG`: Random number generator for reproducibility. Defaults to
+  `Random.default_rng()`. Per-trajectory streams are derived from `rng` exactly
+  as in `QuantumToolbox.mcsolve`, so both solvers draw the same random numbers
+  for the same `rng` state.
 - `gauge_set`: Required finite gauge set. Supply the complete
   result of [`discover_gauges`](@ref), or an `Nc × Ng` matrix of finite complex
   shifts, where `Nc = length(c_ops)` and `Ng ≥ 1`. Column `g` contains the
@@ -303,7 +299,7 @@ function dislou_solve(
         ntraj::Int = 500,
         max_jumps::Int = 1_000_000,
         ensemblealg::Symbol = :threads,
-        seed::Integer = 0,
+        rng::AbstractRNG = Random.default_rng(),
         gauge_set,
         layer3::Bool = false,
         layer3_sizes = nothing,
@@ -321,7 +317,7 @@ function dislou_solve(
         save_final_states::Bool = false
     )
     c_ops isa AbstractVector || throw(ArgumentError("c_ops must be an AbstractVector"))
-    base_seed = _validate_ensemble_options(ntraj, ensemblealg, seed)
+    _validate_ensemble_options(ntraj, ensemblealg)
     _validate_root_tolerances(survival_rtol, time_rtol, time_atol)
     first_passage_maxiter > 0 ||
         throw(ArgumentError("first_passage_maxiter must be positive"))
@@ -363,6 +359,7 @@ function dislou_solve(
             validated_layer3_sizes, residual_tolerance
         ) : nothing
 
+    seeds = _trajectory_seeds(rng, ntraj)
     common = (;
         survival_rtol,
         time_rtol,
@@ -376,13 +373,13 @@ function dislou_solve(
     )
     if ensemblealg === :serial
         acc, diagnostics, final_states, records, col_gauge = _solve_gauges_serial(
-            prepared, layer3_prepared, problem.ψ0, tl_local, duration, ntraj, base_seed;
+            prepared, layer3_prepared, problem.ψ0, tl_local, duration, seeds;
             common...,
         )
         backend = _eigensystem_backend(prepared)
     elseif ensemblealg === :threads
         acc, diagnostics, final_states, records, col_gauge = _solve_gauges_threaded(
-            prepared, layer3_prepared, problem.ψ0, tl_local, duration, ntraj, base_seed;
+            prepared, layer3_prepared, problem.ψ0, tl_local, duration, seeds;
             common...,
         )
         backend = _eigensystem_backend(prepared)
@@ -390,7 +387,7 @@ function dislou_solve(
         acc, diagnostics, final_states, records, col_gauge, backend =
             _solve_gauges_distributed(
             problem.H, problem.C, problem.Z, gauge_data, problem.ψ0,
-            tl_local, duration, ntraj, base_seed;
+            tl_local, duration, seeds;
             survival_rtol, time_rtol, time_atol, max_jumps,
             first_passage_maxiter,
             hysteresis,
@@ -413,7 +410,6 @@ function dislou_solve(
     return _build_solution(
         acc, tl, times_states, records, col_gauge, diagnostics,
         gauge_data, gauge_data.status, problem.dimensions;
-        seed = base_seed,
         survival_rtol,
         time_rtol,
         time_atol,

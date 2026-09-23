@@ -30,6 +30,7 @@ using Clustering
 using DiSLOUTrajectories
 using LinearAlgebra
 using QuantumToolbox
+using Random
 import QuantumCumulants
 ```
 
@@ -114,7 +115,7 @@ trajectory_gauges = discover_gauges(
     dbscan_radius=0.5,
     min_neighbors=10,
     min_weight=0.02,
-    seed=1,
+    rng=Xoshiro(1),
     ensemblealg=:threads,
 )
 
@@ -215,7 +216,7 @@ sol = dislou_solve(
     gauge_set=sc,
     ntraj,
     ensemblealg=:threads,
-    seed=ensemble_seed,
+    rng=Xoshiro(ensemble_seed),
     saveat=snapshot_times,
     save_trajectories=true,
 )
@@ -453,7 +454,7 @@ layer3_sol = dislou_solve(
     gauge_set=sc,
     ntraj,
     ensemblealg=:threads,
-    seed=ensemble_seed,
+    rng=Xoshiro(ensemble_seed),
     layer3=true,
     layer3_sizes=[60, 60],
     residual_tolerance=1e-3,

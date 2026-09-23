@@ -71,7 +71,7 @@ and set the gauge at $\alpha$, to minimize quantum jumps in the steady state. We
 collapse operator is $\sqrt{\kappa}(a-\alpha)$.
 
 ```jldoctest
-using QuantumToolbox, DiSLOUTrajectories
+using QuantumToolbox, DiSLOUTrajectories, Random
 
 N = 20
 κ = 1.0
@@ -85,7 +85,7 @@ e_ops = [num(N)]
 gauges = fill(-sqrt(κ) * α, 1, 1)
 
 sol = dislou_solve(H, ψ0, tlist, c_ops;
-                   gauge_set = gauges, e_ops, ntraj = 1_000, seed = 1)
+                   gauge_set = gauges, e_ops, ntraj = 1_000, rng = Xoshiro(1))
 mean_n = expect_mean(sol)
 sem_n = expect_sem(sol)
 

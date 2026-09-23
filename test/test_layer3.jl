@@ -63,7 +63,7 @@ function layer3_rng_tail(prepared, layer3, ψ0, tlist, seed, trajectory)
         physical.Ne, length(tlist), physical.Nc
     )
     diagnostics = DiSLOUTrajectories._GaugeDiagnostics(ngauges)
-    rng = DiSLOUTrajectories._traj_rng(UInt64(seed), trajectory)
+    rng = Xoshiro(DiSLOUTrajectories._trajectory_seeds(Xoshiro(seed), trajectory)[trajectory])
     buffers = DiSLOUTrajectories._WorkBuffers(physical, max(physical.N, ngauges))
     if layer3 === nothing
         DiSLOUTrajectories._run_exact_trajectory!(
@@ -96,7 +96,8 @@ function layer3_storage_fixture(
     )
     accumulator, diagnostics, final_states, records, col_gauge =
         DiSLOUTrajectories._solve_gauges_serial(
-        prepared, layer3, ψ0, tlist, last(tlist), ntraj, UInt64(seed);
+        prepared, layer3, ψ0, tlist, last(tlist),
+        DiSLOUTrajectories._trajectory_seeds(Xoshiro(seed), ntraj);
         first_passage_method, save_final_states = true
     )
     layer3_diagnostics = (;
@@ -116,13 +117,13 @@ end
 @testset "Layer III is residual-gated and exactly falls back" begin
     H, ψ0, tlist, c_ops, e_ops, shifts = layer3_jump_fixture()
     common = (;
-        e_ops, gauge_set = shifts, ntraj = 16, seed = 91,
+        e_ops, gauge_set = shifts, ntraj = 16,
         ensemblealg = :serial, save_final_states = true,
         observable_storage = :dense,
     )
-    exact = dislou_solve(H, ψ0, tlist, c_ops; common...)
+    exact = dislou_solve(H, ψ0, tlist, c_ops; common..., rng = Xoshiro(91))
     gated = dislou_solve(
-        H, ψ0, tlist, c_ops; common...,
+        H, ψ0, tlist, c_ops; common..., rng = Xoshiro(91),
         layer3 = true, layer3_sizes = 1,
         residual_tolerance = eps(Float64)
     )
@@ -132,8 +133,10 @@ end
     @test gated.layer3_diagnostics.sizes == [1]
     @test gated.layer3_diagnostics.fallback_segments > 0
     @test gated.layer3_diagnostics.maximum_residual > eps(Float64)
-    @test gated.expect == exact.expect
-    @test gated.expect_sem == exact.expect_sem
+    # Accepted dark-state projections propagate in the reduced basis, so
+    # observables agree to roundoff while the jump records match exactly.
+    @test gated.expect ≈ exact.expect atol = 1.0e-15 rtol = 0
+    @test gated.expect_sem ≈ exact.expect_sem atol = 1.0e-15 rtol = 0
     @test gated.col_times == exact.col_times
     @test gated.col_which == exact.col_which
     @test gated.col_gauge == exact.col_gauge
@@ -151,11 +154,11 @@ end
     c_ops = [sqrt(2.0) * lowering]
     common = (;
         e_ops = [num(dimension)], gauge_set = zeros(ComplexF64, 1, 1),
-        ntraj = 16, seed = 37, ensemblealg = :serial,
+        ntraj = 16, ensemblealg = :serial,
     )
-    exact = dislou_solve(H, ψ0, tlist, c_ops; common...)
+    exact = dislou_solve(H, ψ0, tlist, c_ops; common..., rng = Xoshiro(37))
     reduced = dislou_solve(
-        H, ψ0, tlist, c_ops; common...,
+        H, ψ0, tlist, c_ops; common..., rng = Xoshiro(37),
         layer3 = true, layer3_sizes = 2, residual_tolerance = 1.0e-12
     )
 
@@ -174,12 +177,12 @@ end
 @testset "Layer III gates nonzero physical jump images" begin
     H, ψ0, tlist, c_ops, e_ops, shifts = layer3_jump_fixture()
     common = (;
-        e_ops, gauge_set = shifts, ntraj = 16, seed = 91,
+        e_ops, gauge_set = shifts, ntraj = 16,
         ensemblealg = :serial, save_final_states = true,
     )
-    exact = dislou_solve(H, ψ0, tlist, c_ops; common...)
+    exact = dislou_solve(H, ψ0, tlist, c_ops; common..., rng = Xoshiro(91))
     gated = dislou_solve(
-        H, ψ0, tlist, c_ops; common...,
+        H, ψ0, tlist, c_ops; common..., rng = Xoshiro(91),
         layer3 = true, layer3_sizes = 2, residual_tolerance = 1.0e-12
     )
     dense_layer3 = layer3_storage_fixture(
@@ -241,7 +244,7 @@ end
         zeros(ComplexF64, 2, 2), ComplexF64[1, 0], [0.0],
         Matrix{ComplexF64}[]; gauge_set = zeros(ComplexF64, 0, 1),
         layer3 = true, layer3_sizes = 1, residual_tolerance = 1.0e-12,
-        ntraj = 1, seed = 2, ensemblealg = :serial
+        ntraj = 1, rng = Xoshiro(2), ensemblealg = :serial
     )
     @test solution.layer3_diagnostics.sizes == [2]
 end
@@ -256,12 +259,12 @@ end
     tlist = collect(0.0:0.25:4.0)
     common = (;
         e_ops = [model.nop, model.xop], gauge_set = shifts,
-        ntraj = 5, seed = 71, hysteresis = 0.7,
+        ntraj = 10, hysteresis = 0.7,
         ensemblealg = :serial, save_final_states = true,
     )
-    exact = dislou_solve(model.H, model.ψ0, tlist, model.c_ops; common...)
+    exact = dislou_solve(model.H, model.ψ0, tlist, model.c_ops; common..., rng = Xoshiro(71))
     reduced = dislou_solve(
-        model.H, model.ψ0, tlist, model.c_ops; common...,
+        model.H, model.ψ0, tlist, model.c_ops; common..., rng = Xoshiro(71),
         layer3 = true, layer3_sizes = 12, residual_tolerance = 1.0e-10
     )
 
@@ -285,14 +288,14 @@ end
 @testset "Layer III destination-gauge fallback preserves exact streams" begin
     H, ψ0, tlist, c_ops, e_ops, shifts = layer3_cross_gauge_fallback_fixture()
     common = (;
-        e_ops, gauge_set = shifts, ntraj = 1, seed = 41,
+        e_ops, gauge_set = shifts, ntraj = 1,
         hysteresis = 0.9, ensemblealg = :serial,
         first_passage_method = :log_survival_predictor, saveat = tlist,
         save_trajectories = true, save_final_states = true,
     )
-    exact = dislou_solve(H, ψ0, tlist, c_ops; common...)
+    exact = dislou_solve(H, ψ0, tlist, c_ops; common..., rng = Xoshiro(41))
     gated = dislou_solve(
-        H, ψ0, tlist, c_ops; common...,
+        H, ψ0, tlist, c_ops; common..., rng = Xoshiro(41),
         layer3 = true, layer3_sizes = 1, residual_tolerance = 1.0e-12
     )
     dense_layer3 = layer3_storage_fixture(
@@ -357,16 +360,16 @@ end
 @testset "Layer III sizes must match the gauge count" begin
     H, ψ0, _, c_ops, _, _ = layer3_jump_fixture()
     base = (;
-        gauge_set = zeros(ComplexF64, 2, 2), ntraj = 1, seed = 9,
+        gauge_set = zeros(ComplexF64, 2, 2), ntraj = 1,
         ensemblealg = :serial, layer3 = true,
     )
 
     @test_throws ArgumentError dislou_solve(
-        H, ψ0, [0.0], c_ops; base..., layer3_sizes = [1]
+        H, ψ0, [0.0], c_ops; base..., rng = Xoshiro(9), layer3_sizes = [1]
     )
     two_gauges = dislou_solve(
         H, ψ0, [0.0], c_ops;
-        base..., layer3_sizes = 2, residual_tolerance = 1.0e-12
+        base..., rng = Xoshiro(9), layer3_sizes = 2, residual_tolerance = 1.0e-12
     )
     @test two_gauges.layer3_diagnostics.sizes == [2, 2]
 end
@@ -392,18 +395,18 @@ end
     lowering = destroy(dimension)
     common = (;
         e_ops = [num(dimension)], gauge_set = zeros(ComplexF64, 1, 1),
-        ntraj = 32, seed = 37, layer3 = true, layer3_sizes = 2,
+        ntraj = 32, layer3 = true, layer3_sizes = 2,
         residual_tolerance = 1.0e-12, save_final_states = true,
     )
     serial = dislou_solve(
         0.2 * num(dimension), fock(dimension, 1),
         [0.0, 0.5, 1.0], [sqrt(2.0) * lowering];
-        common..., ensemblealg = :serial
+        common..., rng = Xoshiro(37), ensemblealg = :serial
     )
     threaded = dislou_solve(
         0.2 * num(dimension), fock(dimension, 1),
         [0.0, 0.5, 1.0], [sqrt(2.0) * lowering];
-        common..., ensemblealg = :threads
+        common..., rng = Xoshiro(37), ensemblealg = :threads
     )
 
     @test threaded.col_times == serial.col_times

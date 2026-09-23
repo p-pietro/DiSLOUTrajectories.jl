@@ -26,7 +26,6 @@ end
             e_ops = [num(d)],
             gauge_set = ComplexF64[0 0.8],
             ntraj = 64,
-            seed = 0x1234,
             first_passage_method = :log_survival_predictor,
             saveat = tlist,
             save_trajectories = true,
@@ -35,11 +34,11 @@ end
         for observable_storage in (:dense, :sparse)
             serial = dislou_solve(
                 H, psi0, tlist, [1.2 * a];
-                common..., ensemblealg = :serial, observable_storage
+                common..., rng = Xoshiro(0x1234), ensemblealg = :serial, observable_storage
             )
             threaded = dislou_solve(
                 H, psi0, tlist, [1.2 * a];
-                common..., ensemblealg = :threads, observable_storage
+                common..., rng = Xoshiro(0x1234), ensemblealg = :threads, observable_storage
             )
 
             same_saved_trajectories(serial, threaded)
@@ -65,13 +64,12 @@ end
         e_ops = [num(dimension)],
         gauge_set = zeros(ComplexF64, 1, 1),
         ntraj = 8,
-        seed = 0x5eed,
         save_final_states = true,
         ensemblealg = :threads,
     )
     solve() = dislou_solve(
         0.2 * num(dimension), fock(dimension, 1), [0.0, 0.1, 0.2],
-        [sqrt(0.4) * lowering]; common...
+        [sqrt(0.4) * lowering]; common..., rng = Xoshiro(0x5eed)
     )
 
     reference = solve()

@@ -107,12 +107,13 @@ size(gauges)
 
 Pass the Hamiltonian, initial state, sample times, and collapse operators to
 [`dislou_solve`](@ref). The parameter `gauge_set` is required, while the optional `e_ops` requests expectation
-values. Set the trajectory count and a random seed that the
-run is reproducible:
+values. Set the trajectory count and pass a seeded random number generator,
+as for QuantumToolbox's `mcsolve`, so that the run is reproducible:
 
 ```jldoctest quickstart
+using Random
 sol = dislou_solve(H, ψ0, tlist, c_ops;
-    gauge_set = gauges, e_ops, ntraj = 500, seed = 0)
+    gauge_set = gauges, e_ops, ntraj = 500, rng = Xoshiro(0))
 
 (size(sol.expect), sol.times == tlist)
 
@@ -227,7 +228,7 @@ using Clustering
 trajectory_gauges = discover_gauges(H, c_ops;
     method = :trajectories, mode_ops = [a], mode_dims = [N],
     discovery_time = 20.0 / κ, step = 0.5 / κ,
-    seed_radii = [2.0], cluster_scales = [1.0], nseeds = 20, seed = 1)
+    seed_radii = [2.0], cluster_scales = [1.0], nseeds = 20, rng = Xoshiro(1))
 (size(trajectory_gauges.shifts), isapprox(trajectory_gauges.shifts, gauges; atol = 1e-3))
 
 # output

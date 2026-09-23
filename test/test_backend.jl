@@ -138,13 +138,13 @@ end
     a = destroy(d)
     common = (;
         gauge_set = ComplexF64[0 0.4], ntraj = 2,
-        seed = 51, ensemblealg = :serial,
+        ensemblealg = :serial,
     )
     try
         _DISLOU_CUDA_MOCK_CALLS[] = 0
         _DISLOU_CUDA_MOCK_FAIL_AT[] = typemax(Int)
         SM._enable_cuda_diagonalization!()
-        cuda = dislou_solve(0.1 * num(d), fock(d, 1), [0.0, 0.1], [a]; common...)
+        cuda = dislou_solve(0.1 * num(d), fock(d, 1), [0.0, 0.1], [a]; common..., rng = Xoshiro(51))
         @test cuda.eigensystem_backend === :cuda
         @test _DISLOU_CUDA_MOCK_CALLS[] == size(common.gauge_set, 2)
 
@@ -153,7 +153,7 @@ end
             _DISLOU_CUDA_MOCK_FAIL_AT[] = 1
             SM._enable_cuda_diagonalization!()
             first_fallback = dislou_solve(
-                0.1 * num(d), fock(d, 1), [0.0, 0.1], [a]; common...
+                0.1 * num(d), fock(d, 1), [0.0, 0.1], [a]; common..., rng = Xoshiro(51)
             )
             first_disabled = !backend_info().cuda_enabled
 
@@ -161,7 +161,7 @@ end
             _DISLOU_CUDA_MOCK_FAIL_AT[] = 1
             SM._enable_cuda_diagonalization!()
             second_fallback = dislou_solve(
-                0.1 * num(d), fock(d, 1), [0.0, 0.1], [a]; common...
+                0.1 * num(d), fock(d, 1), [0.0, 0.1], [a]; common..., rng = Xoshiro(51)
             )
             second_disabled = !backend_info().cuda_enabled
 
@@ -169,7 +169,7 @@ end
             _DISLOU_CUDA_MOCK_FAIL_AT[] = 2
             SM._enable_cuda_diagonalization!()
             mixed = dislou_solve(
-                0.1 * num(d), fock(d, 1), [0.0, 0.1], [a]; common...
+                0.1 * num(d), fock(d, 1), [0.0, 0.1], [a]; common..., rng = Xoshiro(51)
             )
             (;
                 first_fallback, first_disabled, second_fallback,

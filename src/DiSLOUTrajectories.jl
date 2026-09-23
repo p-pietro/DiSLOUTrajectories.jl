@@ -17,6 +17,7 @@ using QuantumToolbox
 using LinearAlgebra
 using Random
 using Distributed
+import SciMLBase
 using SparseArrays
 
 export dislou_solve, discover_gauges, DiSLOUSolution, expect_mean, expect_sem

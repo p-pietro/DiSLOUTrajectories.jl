@@ -25,11 +25,11 @@ end
     H, psi0, tlist, c_ops = 0 * a, fock(d, 0), [0.0, 0.25], [a]
     forward = dislou_solve(
         H, psi0, tlist, c_ops;
-        gauge_set = ComplexF64[0 2], ntraj = 3, seed = 7, ensemblealg = :serial
+        gauge_set = ComplexF64[0 2], ntraj = 3, rng = Xoshiro(7), ensemblealg = :serial
     )
     reversed = dislou_solve(
         H, psi0, tlist, c_ops;
-        gauge_set = ComplexF64[2 0], ntraj = 3, seed = 7, ensemblealg = :serial
+        gauge_set = ComplexF64[2 0], ntraj = 3, rng = Xoshiro(7), ensemblealg = :serial
     )
 
     @test forward.gauge_diagnostics.residence_time == [0.75, 0.0]

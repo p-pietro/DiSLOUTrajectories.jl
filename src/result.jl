@@ -56,7 +56,6 @@ as properties of the returned solution:
   has length `Nc`.
 - `converged::Bool`: `true` when all trajectories completed successfully.
   This field does not assess statistical convergence of the ensemble.
-- `seed::UInt64`: Base random seed supplied to the solver.
 - `survival_rtol::Float64`: First-passage log-survival residual tolerance.
 - `time_rtol::Float64`: Relative first-passage time tolerance.
 - `time_atol::Float64`: Absolute first-passage time tolerance.
@@ -119,7 +118,6 @@ struct DiSLOUSolution{TS, TE} <: QuantumToolbox.TimeEvolutionMultiTrajSol{TS, TE
     njumps_total::Int
     jumps_by_channel::Vector{Int}
     converged::Bool
-    seed::UInt64
     survival_rtol::Float64
     time_rtol::Float64
     time_atol::Float64
@@ -191,7 +189,6 @@ function _build_solution(
         diagnostics::_GaugeDiagnostics,
         gauge_data::_GaugeData, gauge_status::Symbol,
         dimensions;
-        seed::UInt64,
         survival_rtol::Real,
         time_rtol::Real,
         time_atol::Real,
@@ -240,7 +237,6 @@ function _build_solution(
         acc.njumps_total,
         copy(acc.jumps_by_channel),
         true,
-        seed,
         Float64(survival_rtol),
         Float64(time_rtol),
         Float64(time_atol),

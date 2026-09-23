@@ -41,7 +41,7 @@ end
     )
     reused = dislou_solve(
         H, psi0, ts, c_ops;
-        gauge_set = found, ntraj = 8, seed = 17, ensemblealg = :serial
+        gauge_set = found, ntraj = 8, rng = Xoshiro(17), ensemblealg = :serial
     )
 
     @test reused isa DiSLOUSolution
