@@ -165,15 +165,17 @@ end
     c_ops = [ComplexF64[0 1; 0 0]]
     common = (;
         gauge_set = zeros(ComplexF64, 1, 1), ntraj = 1,
-        seed = 5, ensemblealg = :serial, survival_rtol = 1.0e-15,
+        ensemblealg = :serial, survival_rtol = 1.0e-15,
         time_rtol = 1.0e-15, first_passage_maxiter = 1,
     )
+    # Survival plateaus at 1/2, so only a first threshold above it forces a root solve.
+    @test rand(Xoshiro(SM._trajectory_seeds(Xoshiro(4), 1)[1])) > 0.5
 
     @test_throws DiSLOUTrajectories.FirstPassageConvergenceError dislou_solve(
-        H, psi0, tlist, c_ops; common...
+        H, psi0, tlist, c_ops; common..., rng = Xoshiro(4)
     )
     @test_throws DiSLOUTrajectories.FirstPassageConvergenceError dislou_solve(
-        H, psi0, tlist, c_ops; common..., layer3 = true, layer3_sizes = 2
+        H, psi0, tlist, c_ops; common..., rng = Xoshiro(4), layer3 = true, layer3_sizes = 2
     )
 end
 
@@ -183,7 +185,7 @@ end
     sol = dislou_solve(
         0.1 * (a + a'), fock(d, 3), collect(2.0:0.2:3.0),
         [1.4 * a]; e_ops = [num(d)], gauge_set = ComplexF64[0 0.8],
-        ntraj = 40, seed = 81, ensemblealg = :serial
+        ntraj = 40, rng = Xoshiro(81), ensemblealg = :serial
     )
 
     @test length(sol.col_times) == sol.ntraj

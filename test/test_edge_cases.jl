@@ -87,14 +87,6 @@ end
         H, psi0, tlist, c_ops;
         gauge_set = common.gauge_set, ntraj = 1, ensemblealg = :invalid
     )
-    @test_throws ArgumentError dislou_solve(
-        H, psi0, tlist, c_ops;
-        common..., seed = -1
-    )
-    @test_throws ArgumentError dislou_solve(
-        H, psi0, tlist, c_ops;
-        common..., seed = big(typemax(UInt64)) + 1
-    )
     @test_throws ArgumentError dislou_solve(H, 0 * psi0, tlist, c_ops; common...)
     @test_throws ArgumentError dislou_solve(
         H, ComplexF64[1, NaN, 0], tlist, c_ops;
@@ -156,18 +148,18 @@ end
     common = (;
         e_ops = [ComplexF64[0 0; 0 1]],
         gauge_set = zeros(ComplexF64, 1, 1), ntraj = 8,
-        seed = 9, ensemblealg = :serial,
+        ensemblealg = :serial,
     )
     dense = dislou_solve(
         H, psi0, tlist, c_ops;
-        common..., observable_storage = :dense
+        common..., rng = Xoshiro(9), observable_storage = :dense
     )
     sparse = dislou_solve(
         H, psi0, tlist, c_ops;
-        common..., observable_storage = :sparse
+        common..., rng = Xoshiro(9), observable_storage = :sparse
     )
     reduced = dislou_solve(
-        H, psi0, tlist, c_ops; common...,
+        H, psi0, tlist, c_ops; common..., rng = Xoshiro(9),
         layer3 = true, layer3_sizes = 2
     )
 
@@ -192,7 +184,7 @@ end
     observable = Diagonal(ComplexF64[1, 2])
     common = (;
         e_ops = [observable], gauge_set = zeros(ComplexF64, 0, 1),
-        ntraj = 3, seed = 8, ensemblealg = :serial, saveat = tlist,
+        ntraj = 3, ensemblealg = :serial, saveat = tlist,
     )
 
     dense_cache = DiSLOUTrajectories._DiagonalCache(
@@ -205,11 +197,11 @@ end
     )
     dense = dislou_solve(
         H, psi0, tlist, QuantumObject[];
-        common..., observable_storage = :dense
+        common..., rng = Xoshiro(8), observable_storage = :dense
     )
     sparse_sol = dislou_solve(
         H, psi0, tlist, QuantumObject[];
-        common..., observable_storage = :sparse
+        common..., rng = Xoshiro(8), observable_storage = :sparse
     )
 
     @test dense_cache.Z isa Vector{Matrix{ComplexF64}}
@@ -277,7 +269,7 @@ Base.getindex(A::FakeDeviceMatrix, I...) = getindex(A.data, I...)
     )
     ψ0 = basis(2, 0) ⊗ basis(2, 0)
     common = (;
-        gauge_set = zeros(ComplexF64, 1, 1), ntraj = 1, seed = 9,
+        gauge_set = zeros(ComplexF64, 1, 1), ntraj = 1,
         ensemblealg = :serial,
     )
     empty_gauge = (;
@@ -289,7 +281,7 @@ Base.getindex(A::FakeDeviceMatrix, I...) = getindex(A.data, I...)
         FakeDeviceMatrix(Matrix(h_dense.data)); dims = dimensions
     )
     @test_throws ArgumentError dislou_solve(
-        fake_device_h, ψ0, [0.0], [c_dense]; common...
+        fake_device_h, ψ0, [0.0], [c_dense]; common..., rng = Xoshiro(9)
     )
     @test_throws ArgumentError dislou_solve(
         QuantumObject(ones(ComplexF64, 2, 3)), basis(2, 0), [0.0],
@@ -297,18 +289,18 @@ Base.getindex(A::FakeDeviceMatrix, I...) = getindex(A.data, I...)
     )
     @test_throws ArgumentError dislou_solve(
         h_dense, ψ0, [0.0],
-        [QuantumObject(Matrix{ComplexF64}(I, 3, 3))]; common...
+        [QuantumObject(Matrix{ComplexF64}(I, 3, 3))]; common..., rng = Xoshiro(9)
     )
     @test_throws ArgumentError dislou_solve(
-        h_dense, basis(3, 0), [0.0], [c_dense]; common...
+        h_dense, basis(3, 0), [0.0], [c_dense]; common..., rng = Xoshiro(9)
     )
     @test_throws MethodError dislou_solve(
-        h_dense, ψ0, [0.0], [c_dense]; cache = :unsupported, common...
+        h_dense, ψ0, [0.0], [c_dense]; cache = :unsupported, common..., rng = Xoshiro(9)
     )
 
     # A non-Hermitian observable is a legitimate request, not an error.
     nonhermitian = dislou_solve(
-        h_dense, ψ0, [0.0], [c_dense]; e_ops = [c_dense], common...
+        h_dense, ψ0, [0.0], [c_dense]; e_ops = [c_dense], common..., rng = Xoshiro(9)
     )
     @test nonhermitian.expect !== nothing
 end
@@ -325,15 +317,15 @@ end
     ψ0 = basis(2, 0) ⊗ basis(2, 0)
     common = (;
         e_ops = [sparse_z], gauge_set = zeros(ComplexF64, 1, 1), ntraj = 1,
-        seed = 9, ensemblealg = :serial,
+        ensemblealg = :serial,
     )
     dense = dislou_solve(
         h_sparse, ψ0, [0.0, 0.01], [sparse_c];
-        common..., observable_storage = :dense
+        common..., rng = Xoshiro(9), observable_storage = :dense
     )
     sparse_solution = dislou_solve(
         h_sparse, ψ0, [0.0, 0.01], [sparse_c];
-        common..., observable_storage = :sparse
+        common..., rng = Xoshiro(9), observable_storage = :sparse
     )
 
     @test dense isa DiSLOUSolution

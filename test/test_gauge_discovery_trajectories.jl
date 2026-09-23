@@ -1,17 +1,5 @@
 using Random
 
-function _replay_splitmix64(x::UInt64)
-    z = x + 0x9e3779b97f4a7c15
-    z = (z ⊻ (z >> 30)) * 0xbf58476d1ce4e5b9
-    z = (z ⊻ (z >> 27)) * 0x94d049bb133111eb
-    return z ⊻ (z >> 31)
-end
-
-function _replay_trajectory_rng(seed::Integer, index::Integer)
-    z = _replay_splitmix64(UInt64(seed))
-    return Xoshiro(_replay_splitmix64(z ⊻ UInt64(index)))
-end
-
 @testset "trajectory discovery is deterministic and ordered" begin
     d = 8
     a = destroy(d)
@@ -22,10 +10,10 @@ end
         discovery_time = 0.2, seed_radii = [sqrt(d - 1)], cluster_scales = [1.0],
         step = 0.02, nseeds = 20, terminal_window = 0.04,
         dbscan_radius = 1.5, min_neighbors = 2, min_weight = 0.05,
-        seed = 31, ensemblealg = :serial,
+        ensemblealg = :serial,
     )
-    left = discover_gauges(H, c_ops; kw...)
-    right = discover_gauges(H, c_ops; kw...)
+    left = discover_gauges(H, c_ops; kw..., rng = Xoshiro(31))
+    right = discover_gauges(H, c_ops; kw..., rng = Xoshiro(31))
     @test propertynames(left) == (:shifts, :method, :centers, :weights, :diagnostics)
     @test left.shifts == right.shifts
     @test left.centers == right.centers
@@ -75,7 +63,7 @@ end
         discovery_time = 0.2, seed_radii = [sqrt(d - 1)], cluster_scales = [1.0],
         step = 0.02, nseeds = 20, terminal_window = 0.04,
         preliminary_shifts = preliminary, dbscan_radius = 1.5,
-        min_neighbors = 2, min_weight = 0.05, seed = 19, ensemblealg = :serial
+        min_neighbors = 2, min_weight = 0.05, rng = Xoshiro(19), ensemblealg = :serial
     )
     for g in axes(result.shifts, 2)
         members = findall(==(g), result.diagnostics.labels)
@@ -121,7 +109,7 @@ end
         discovery_time, seed_radii = [1.2], cluster_scales = [1.0], step,
         nseeds, terminal_window, preliminary_shifts = preliminary,
         dbscan_radius = 10.0, min_neighbors = 1, min_weight = 0.0,
-        seed, ensemblealg = :serial
+        rng = Xoshiro(seed), ensemblealg = :serial
     )
 
     tlist = collect(0.0:step:discovery_time)
@@ -129,14 +117,15 @@ end
     Hrun, Crun = DiSLOUTrajectories._shifted_problem(
         H, c_ops, [(1, preliminary[1])]
     )
-    amplitude_rng = Xoshiro(seed)
+    rng = Xoshiro(seed)
+    alphas = [1.2 * sqrt(rand(rng)) * cis(2π * rand(rng)) for _ in 1:nseeds]
+    point_seeds = [rand(rng, UInt64) for _ in 1:nseeds]
     expected = Matrix{ComplexF64}(undef, 1, nseeds)
     for index in 1:nseeds
-        alpha = 1.2 * sqrt(rand(amplitude_rng)) * cis(2π * rand(amplitude_rng))
         sol = mcsolve(
-            Hrun, coherent(d, alpha), tlist, Crun;
+            Hrun, coherent(d, alphas[index]), tlist, Crun;
             e_ops = [a, a' * a, c_ops[1]], ntraj = 1,
-            rng = _replay_trajectory_rng(seed, index), progress_bar = Val(false)
+            rng = Xoshiro(point_seeds[index]), progress_bar = Val(false)
         )
         expected[1, index] = mean(@view sol.expect[3, tail])
     end
@@ -152,10 +141,10 @@ end
         discovery_time = 0.1, seed_radii = [1.0], cluster_scales = [1.0],
         step = 0.02, nseeds = 4, terminal_window = 0.02,
         dbscan_radius = 10.0, min_neighbors = 1, min_weight = 0.0,
-        seed = 13, save_preliminary_trajectories = 2, ensemblealg = :serial,
+        save_preliminary_trajectories = 2, ensemblealg = :serial,
     )
-    left = discover_gauges(0.1 * num(d), [sqrt(0.3) * a]; kw...)
-    right = discover_gauges(0.1 * num(d), [sqrt(0.3) * a]; kw...)
+    left = discover_gauges(0.1 * num(d), [sqrt(0.3) * a]; kw..., rng = Xoshiro(13))
+    right = discover_gauges(0.1 * num(d), [sqrt(0.3) * a]; kw..., rng = Xoshiro(13))
     traces = left.diagnostics.preliminary_traces
     @test traces.indices == [1, 2]
     @test length(traces.states) == length(traces.means) == length(traces.occupations) == 2

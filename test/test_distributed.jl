@@ -54,7 +54,6 @@ end
             e_ops = [num(d)],
             gauge_set = ComplexF64[0 0.8],
             ntraj = 60,
-            seed = 0x1234,
             first_passage_method = :log_survival_predictor,
             saveat = tlist,
             save_trajectories = true,
@@ -63,11 +62,11 @@ end
         for observable_storage in (:dense, :sparse)
             serial = dislou_solve(
                 H, psi0, tlist, c_ops;
-                common..., ensemblealg = :serial, observable_storage
+                common..., rng = Xoshiro(0x1234), ensemblealg = :serial, observable_storage
             )
             distributed = dislou_solve(
                 H, psi0, tlist, c_ops;
-                common..., ensemblealg = :distributed, observable_storage
+                common..., rng = Xoshiro(0x1234), ensemblealg = :distributed, observable_storage
             )
 
             @test length.(serial.col_times) == length.(distributed.col_times)
@@ -112,18 +111,17 @@ end
                 e_ops = [num(dimension)],
                 gauge_set = zeros(ComplexF64, 1, 1),
                 ntraj = 4,
-                seed = 37,
                 layer3 = true,
                 layer3_sizes = 2,
                 residual_tolerance = 1.0e-12,
             )
             layer3_serial = dislou_solve(
                 0.2 * num(dimension), initial_state, layer3_times,
-                layer3_ops; layer3_common..., ensemblealg = :serial
+                layer3_ops; layer3_common..., rng = Xoshiro(37), ensemblealg = :serial
             )
             layer3_distributed = dislou_solve(
                 0.2 * num(dimension), initial_state, layer3_times,
-                layer3_ops; layer3_common..., ensemblealg = :distributed
+                layer3_ops; layer3_common..., rng = Xoshiro(37), ensemblealg = :distributed
             )
 
             @test layer3_distributed.layer3_diagnostics.sizes == [2]
@@ -205,7 +203,7 @@ end
                     Matrix(Diagonal(ComplexF64[0, 1])), ComplexF64[1, 0],
                     [0.0], Matrix{ComplexF64}[];
                     gauge_set = zeros(ComplexF64, 0, 1),
-                    ntraj = length(active_workers), seed = 7,
+                    ntraj = length(active_workers), rng = Xoshiro(7),
                     ensemblealg = :distributed, layer3 = true,
                     layer3_sizes = 1, residual_tolerance = 1.0e-12
                 )
@@ -240,7 +238,7 @@ end
                     H_near, ComplexF64[1, 0], [0.0],
                     Matrix{ComplexF64}[];
                     gauge_set = zeros(ComplexF64, 0, 1),
-                    ntraj = length(active_workers), seed = 7,
+                    ntraj = length(active_workers), rng = Xoshiro(7),
                     ensemblealg = :distributed, layer3 = true,
                     layer3_sizes = 1, residual_tolerance = 1.0e-12
                 )
@@ -267,7 +265,7 @@ end
                 zeros(ComplexF64, 2, 2), ComplexF64[1, 0],
                 [0.0], Matrix{ComplexF64}[];
                 gauge_set = zeros(ComplexF64, 0, 1),
-                ntraj = length(active_workers), seed = 7,
+                ntraj = length(active_workers), rng = Xoshiro(7),
                 ensemblealg = :distributed
             )
             @test mixed.eigensystem_backend === :mixed

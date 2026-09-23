@@ -1,14 +1,13 @@
-# Private deterministic trajectory and ensemble execution.
+# Private trajectory and ensemble execution.
 
-@inline function _splitmix64(x::UInt64)
-    z = x + 0x9e3779b97f4a7c15
-    z = (z ⊻ (z >> 30)) * 0xbf58476d1ce4e5b9
-    z = (z ⊻ (z >> 27)) * 0x94d049bb133111eb
-    return z ⊻ (z >> 31)
+# Per-trajectory seeds drawn from `rng` exactly as `QuantumToolbox.mcsolve` does.
+# SciMLBase's `default_rng_func` seeds the task-local RNG with each seed, the
+# same stream as `Xoshiro(seed)`, so trajectory `k` consumes the same random
+# numbers here and in `mcsolve(...; rng)`.
+function _trajectory_seeds(rng::AbstractRNG, ntraj::Integer)
+    rand(rng)  # QuantumToolbox's mcsolveProblem draws one threshold first
+    return SciMLBase.generate_sim_seeds(rng, nothing, ntraj)
 end
-
-_traj_rng(base_seed::UInt64, index::Integer) =
-    Xoshiro(_splitmix64(_splitmix64(base_seed) ⊻ UInt64(index)))
 
 _chunk_ranges(ntraj::Int, nchunks::Int) =
     [
@@ -137,7 +136,7 @@ end
 
 function _run_gauge_range!(
         accumulator, diagnostics, prepared, layer3, state, times, T,
-        trajectories, slots, base_seed, final_states, records, col_gauge;
+        seeds, slots, final_states, records, col_gauge;
         first_passage_method, times_states, save_trajectories, kwargs...
     )
     system = prepared.system
@@ -147,14 +146,14 @@ function _run_gauge_range!(
     run!, preparations = layer3 === nothing ?
         (_run_exact_trajectory!, (prepared,)) :
         (_run_layer3_trajectory!, (prepared, layer3))
-    for (trajectory, slot) in zip(trajectories, slots)
+    for (seed, slot) in zip(seeds, slots)
         record = _TrajectoryRecord(
             physical.N, physical.Ne, length(times),
             length(times_states), save_trajectories
         )
         run!(
             accumulator, diagnostics, preparations..., state, times, T,
-            _traj_rng(base_seed, trajectory), wb; kwargs..., first_passage_method,
+            Xoshiro(seed), wb; kwargs..., first_passage_method,
             trajectory_predictor = predictor, final_states,
             final_state_column = slot, times_states, record,
             col_gauge = col_gauge[slot]
@@ -167,8 +166,8 @@ end
 function _solve_gauges_serial(
         prepared::_Layer1Prepared,
         layer3::Union{Nothing, _Layer3Prepared}, ψ0::AbstractVector{CF},
-        tlist::AbstractVector{Float64}, T::Float64, ntraj::Int,
-        base_seed::UInt64; survival_rtol::Real = 1.0e-10,
+        tlist::AbstractVector{Float64}, T::Float64,
+        seeds::Vector{UInt64}; survival_rtol::Real = 1.0e-10,
         time_rtol::Real = 1.0e-12, time_atol::Real = 0.0,
         max_jumps::Int = 1_000_000,
         first_passage_maxiter::Int = 100,
@@ -180,6 +179,7 @@ function _solve_gauges_serial(
     system = prepared.system
     physical = system.cache
     ngauges = length(system.gauges)
+    ntraj = length(seeds)
     acc = _TrajectoryAccumulator(physical.Ne, length(tlist), physical.Nc)
     diagnostics = _GaugeDiagnostics(ngauges)
     final_states = save_final_states ?
@@ -191,7 +191,7 @@ function _solve_gauges_serial(
 
     _run_gauge_range!(
         acc, diagnostics, prepared, layer3, state, times, T,
-        1:ntraj, 1:ntraj, base_seed, final_states, records, col_gauge;
+        seeds, 1:ntraj, final_states, records, col_gauge;
         survival_rtol, time_rtol, time_atol, max_jumps, first_passage_maxiter,
         first_passage_method, times_states, save_trajectories
     )
@@ -201,8 +201,8 @@ end
 function _solve_gauges_threaded(
         prepared::_Layer1Prepared,
         layer3::Union{Nothing, _Layer3Prepared}, ψ0::AbstractVector{CF},
-        tlist::AbstractVector{Float64}, T::Float64, ntraj::Int,
-        base_seed::UInt64; survival_rtol::Real = 1.0e-10,
+        tlist::AbstractVector{Float64}, T::Float64,
+        seeds::Vector{UInt64}; survival_rtol::Real = 1.0e-10,
         time_rtol::Real = 1.0e-12, time_atol::Real = 0.0,
         max_jumps::Int = 1_000_000,
         first_passage_maxiter::Int = 100,
@@ -214,6 +214,7 @@ function _solve_gauges_threaded(
     system = prepared.system
     physical = system.cache
     ngauges = length(system.gauges)
+    ntraj = length(seeds)
     nchunks = max(1, min(2 * Threads.nthreads(), ntraj))
     ranges = _chunk_ranges(ntraj, nchunks)
     accumulators = [
@@ -231,7 +232,7 @@ function _solve_gauges_threaded(
     @sync for chunk in 1:nchunks
         Threads.@spawn _run_gauge_range!(
             accumulators[chunk], diagnostics[chunk], prepared, layer3,
-            state, times, T, ranges[chunk], ranges[chunk], base_seed,
+            state, times, T, view(seeds, ranges[chunk]), ranges[chunk],
             final_states, records, col_gauge;
             survival_rtol, time_rtol, time_atol, max_jumps, first_passage_maxiter,
             first_passage_method, times_states, save_trajectories
@@ -251,7 +252,7 @@ function _solve_gauges_distributed(
         H::Matrix{CF}, C::Vector{Matrix{CF}},
         Z::_ObservableMatrices, gauge_data::_GaugeData,
         ψ0::AbstractVector{CF}, tlist::AbstractVector{Float64}, T::Float64,
-        ntraj::Int, base_seed::UInt64; survival_rtol::Real = 1.0e-10,
+        seeds::Vector{UInt64}; survival_rtol::Real = 1.0e-10,
         time_rtol::Real = 1.0e-12, time_atol::Real = 0.0,
         max_jumps::Int = 1_000_000,
         first_passage_maxiter::Int = 100,
@@ -265,6 +266,7 @@ function _solve_gauges_distributed(
         times_states::Vector{Float64} = Float64[],
         save_trajectories::Bool = false
     )
+    ntraj = length(seeds)
     nchunks = min(max(1, nworkers()), ntraj)
     ranges = _chunk_ranges(ntraj, nchunks)
     dimension, nobservables, nchannels = size(H, 1), length(Z), length(C)
@@ -291,7 +293,7 @@ function _solve_gauges_distributed(
         col_gauge = [Int[] for _ in ranges[chunk]]
         _run_gauge_range!(
             accumulator, diagnostics, prepared, layer3, state, times, T,
-            ranges[chunk], eachindex(records), base_seed, final_states, records,
+            seeds[ranges[chunk]], eachindex(records), final_states, records,
             col_gauge; survival_rtol, time_rtol, time_atol, max_jumps,
             first_passage_maxiter, first_passage_method, times_states,
             save_trajectories

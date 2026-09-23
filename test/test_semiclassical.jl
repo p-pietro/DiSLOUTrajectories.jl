@@ -27,7 +27,7 @@ include("fixtures/two_mode_diamond.jl")
     fixture = two_mode_diamond_numerical_fixture(Tuple(Int.(limits) .+ 1))
     solution = dislou_solve(
         fixture.H, fixture.psi0, [0.0], fixture.c_ops;
-        gauge_set = result, ntraj = 1, seed = 5, ensemblealg = :serial
+        gauge_set = result, ntraj = 1, rng = Xoshiro(5), ensemblealg = :serial
     )
 
     @test solution isa DiSLOUSolution

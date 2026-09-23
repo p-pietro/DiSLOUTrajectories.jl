@@ -301,6 +301,8 @@ Random.rand(rng::_FixedFloatRNG) = rng.value
     @test DiSLOUTrajectories._sample_channel([0.0, 2.0, 0.0], zero) == 2
     @test DiSLOUTrajectories._sample_channel([0.0, 2.0, 0.0], upper) == 2
     @test DiSLOUTrajectories._sample_channel([2.0, 0.0], upper) == 1
+    # Ties select the next channel, as QuantumToolbox's findfirst(>(r), cumsum(w)).
+    @test DiSLOUTrajectories._sample_channel([1.0, 1.0], _FixedFloatRNG(0.5)) == 2
     @test_throws DomainError DiSLOUTrajectories._sample_channel([1.0, -eps(Float64)], zero)
     @test_throws DomainError DiSLOUTrajectories._sample_channel([1.0, NaN], zero)
     @test_throws DomainError DiSLOUTrajectories._sample_channel([1.0, Inf], zero)

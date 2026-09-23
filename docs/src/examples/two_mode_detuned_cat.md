@@ -35,6 +35,7 @@ using DiSLOUTrajectories
 using LinearAlgebra
 using Printf
 using QuantumToolbox
+using Random
 import QuantumCumulants
 
 include(joinpath(examples_dir, "exact_steady_state.jl"))
@@ -206,7 +207,7 @@ sol = dislou_solve(
     gauge_set=sc,
     ntraj,
     ensemblealg=:threads,
-    seed=ensemble_seed,
+    rng=Xoshiro(ensemble_seed),
     saveat=snapshot_times,
     save_trajectories=true,
 )
@@ -289,7 +290,7 @@ layer3_sol = dislou_solve(
     gauge_set=sc,
     ntraj,
     ensemblealg=:threads,
-    seed=ensemble_seed,
+    rng=Xoshiro(ensemble_seed),
     layer3=true,
     layer3_sizes,
     residual_tolerance=1e-4,

@@ -212,7 +212,7 @@ julia> gauges = discover_gauges(0.0 * a, [a];
            mode_ops = [a], mode_dims = [2], discovery_time = 1.0,
            seed_radii = [0.0], cluster_scales = [1.0], step = 1.0,
            nseeds = 2, min_neighbors = 1, min_weight = 0.0,
-           seed = 1, ensemblealg = :serial);
+           ensemblealg = :serial);
 
 julia> (gauges.method, size(gauges.shifts), all(iszero, gauges.shifts))
 (:trajectories, (1, 1), true)
@@ -290,8 +290,8 @@ the semiclassical method must be selected explicitly.
   passed to `Clustering.dbscan`. Defaults to `10`.
 - `min_weight`: Minimum retained cluster population as a fraction of all
   `nseeds` samples. Must be finite and in `[0, 1)`; defaults to `0.02`.
-- `seed::Integer`: Integer in `0:typemax(UInt64)` controlling the initial amplitudes and
-  preliminary trajectory streams. Defaults to `1`.
+- `rng::AbstractRNG`: Random number generator for the initial amplitudes and
+  the preliminary trajectory streams. Defaults to `Random.default_rng()`.
 - `save_preliminary_trajectories::Int`: Nonnegative number of preliminary
   trajectories whose state, expectation, and jump traces are retained in the
   diagnostics. Defaults to `0`; values above `nseeds` retain all trajectories.
@@ -367,7 +367,7 @@ For trajectory discovery, `diagnostics` contains:
   of event-time and one-based collapse-channel vectors for the retained runs.
 - The resolved discovery settings: `mode_dims`, `discovery_time`, `seed_radii`,
   `cluster_scales`, `step`, `nseeds`, `terminal_window`, `preliminary_shifts`,
-  `dbscan_radius`, `min_neighbors`, `min_weight`, `seed`, and
+  `dbscan_radius`, `min_neighbors`, `min_weight`, and
   `save_preliminary_trajectories`. The last field records the retained count,
   capped at `nseeds`.
 
@@ -388,10 +388,51 @@ discover_gauges(model, collapse_operators; method::Symbol = :trajectories, kwarg
 # DiSLOUTrajectoriesQuantumCumulantsExt (Val{:semiclassical}).
 function _discover_gauges end
 
-const _DISCOVERY_EXTENSIONS = (
-    trajectories = (:DiSLOUTrajectoriesClusteringExt, "Clustering"),
-    semiclassical = (:DiSLOUTrajectoriesQuantumCumulantsExt, "QuantumCumulants"),
-)
+# Paper: ᾱ_j^(r) and terminal ⟨C_μ⟩ averages (Eqs. A.7–A.8).
+function _run_preliminary_trajectories(
+        H, c_ops;
+        mode_ops, mode_dims, discovery_time, seed_radii, cluster_scales,
+        step = discovery_time / 40, nseeds::Int = 600, terminal_window = 0.0,
+        preliminary_shifts = nothing, dbscan_radius = 1.5,
+        min_neighbors::Int = 10, min_weight = 0.02, rng::AbstractRNG = Random.default_rng(),
+        save_preliminary_trajectories::Int = 0, ensemblealg::Symbol = :threads
+    )
+    inputs = _trajectory_discovery_inputs(H, c_ops, mode_ops, mode_dims, discovery_time, seed_radii, cluster_scales, step, nseeds, terminal_window, preliminary_shifts, dbscan_radius, min_neighbors, min_weight, save_preliminary_trajectories, ensemblealg)
+    tlist = collect(0.0:float(step):float(discovery_time)); last(tlist) < discovery_time && push!(tlist, float(discovery_time))
+    tail = findall(t -> t >= max(first(tlist), float(discovery_time - terminal_window)), tlist); isempty(tail) && (tail = [lastindex(tlist)])
+    Hrun, Crun = all(iszero, inputs.z) ? (H, c_ops) :
+        _shifted_problem(H, c_ops, collect(enumerate(inputs.z)))
+    number_ops = [op' * op for op in mode_ops]; e_ops = vcat(collect(mode_ops), number_ops, collect(c_ops))
+    amplitudes = Matrix{CF}(undef, inputs.nmodes, nseeds)
+    for point in 1:nseeds, mode in 1:inputs.nmodes
+        amplitudes[mode, point] = seed_radii[mode] * sqrt(rand(rng)) * cis(2π * rand(rng))
+    end
+    point_seeds = [rand(rng, UInt64) for _ in 1:nseeds]
+    nsave = min(save_preliminary_trajectories, nseeds)
+    # QuantumToolbox's retained-run keyword predates DiSLOUTrajectories.
+    pilot_storage = (; Symbol("keep_" * "runs_results") => Val(true))
+    relax = function (point)
+        psi0 = tensor((coherent(Int(mode_dims[mode]), amplitudes[mode, point]) for mode in 1:inputs.nmodes)...)
+        sol = mcsolve(
+            Hrun, psi0, tlist, Crun; e_ops, ntraj = 1,
+            rng = Xoshiro(point_seeds[point]),
+            pilot_storage..., saveat = tlist,
+            progress_bar = Val(false)
+        )
+        return (; means = CF[mean(@view sol.expect[mode, 1, tail]) for mode in 1:inputs.nmodes], occupations = Float64[mean(real.(@view sol.expect[inputs.nmodes + mode, 1, tail])) for mode in 1:inputs.nmodes], collapses = CF[mean(@view sol.expect[2inputs.nmodes + channel, 1, tail]) for channel in eachindex(c_ops)], trace_states = point <= nsave ? hcat((CF.(vec(state.data)) for state in sol.states)...) : nothing, trace_means = point <= nsave ? Matrix{CF}(@view sol.expect[1:inputs.nmodes, 1, :]) : nothing, trace_occupations = point <= nsave ? Float64.(real.(@view sol.expect[(inputs.nmodes + 1):2inputs.nmodes, 1, :])) : nothing, jump_times = point <= nsave ? copy(sol.col_times[1]) : nothing, jump_channels = point <= nsave ? copy(sol.col_which[1]) : nothing)
+    end
+    results = _run_discovery_indices(relax, nseeds, ensemblealg)
+    terminal_means = Matrix{CF}(undef, inputs.nmodes, nseeds); terminal_occupations = Matrix{Float64}(undef, inputs.nmodes, nseeds); terminal_collapse_means = Matrix{CF}(undef, length(c_ops), nseeds)
+    for point in 1:nseeds
+        result = results[point]; terminal_means[:, point] = result.means; terminal_occupations[:, point] = result.occupations; terminal_collapse_means[:, point] = result.collapses
+    end
+    states = [copy(results[point].trace_states) for point in 1:nsave]; traces = [copy(results[point].trace_means) for point in 1:nsave]; occupations = [copy(results[point].trace_occupations) for point in 1:nsave]; jump_times = [copy(results[point].jump_times) for point in 1:nsave]; jump_channels = [copy(results[point].jump_channels) for point in 1:nsave]
+    return (;
+        inputs, tlist, results, terminal_means, terminal_occupations,
+        terminal_collapse_means, nsave, states, traces, occupations,
+        jump_times, jump_channels,
+    )
+end
 
 # Turns the bare MethodError of an unloaded or unknown method into an actionable hint.
 function _discovery_error_hint(io, exc, argtypes, kwargs)
@@ -402,8 +443,47 @@ function _discovery_error_hint(io, exc, argtypes, kwargs)
         print(io, "\nUnsupported gauge discovery method $(repr(method)); use :trajectories or :semiclassical.")
         return
     end
-    extension, package = _DISCOVERY_EXTENSIONS[method]
-    Base.get_extension(@__MODULE__, extension) === nothing || return
-    print(io, "\nmethod=:$method requires $package; run `using $package` before calling discover_gauges.")
-    return
+    return (; shifts = copy(shifts), method = :trajectories, centers = copy(clusters.centers), weights = copy(clusters.weights), diagnostics)
+end
+
+# Paper: ζ_μ^(g) from preliminary trajectory clusters (Eq. A.8).
+function _discover_gauges_trajectories(
+        H, c_ops;
+        mode_ops, mode_dims, discovery_time, seed_radii, cluster_scales,
+        step = discovery_time / 40, nseeds::Int = 600, terminal_window = 0.0,
+        preliminary_shifts = nothing, dbscan_radius = 1.5,
+        min_neighbors::Int = 10, min_weight = 0.02, rng::AbstractRNG = Random.default_rng(),
+        save_preliminary_trajectories::Int = 0, ensemblealg::Symbol = :threads
+    )
+    data = _run_preliminary_trajectories(
+        H, c_ops;
+        mode_ops, mode_dims, discovery_time, seed_radii, cluster_scales,
+        step, nseeds, terminal_window, preliminary_shifts, dbscan_radius,
+        min_neighbors, min_weight, rng, save_preliminary_trajectories,
+        ensemblealg
+    )
+    clusters = _cluster_terminal_means(
+        data.terminal_means;
+        cluster_scales, dbscan_radius, min_neighbors, min_weight
+    )
+    diagnostics = (;
+        counts = copy(clusters.counts), labels = copy(clusters.labels),
+        terminal_means = copy(data.terminal_means),
+        terminal_occupations = copy(data.terminal_occupations),
+        terminal_collapse_means = copy(data.terminal_collapse_means),
+        times = copy(data.tlist),
+        preliminary_traces = (;
+            indices = collect(1:data.nsave),
+            states = data.states, means = data.traces, occupations = data.occupations,
+        ),
+        preliminary_jump_times = data.jump_times,
+        preliminary_jump_channels = data.jump_channels,
+        mode_dims = collect(Int, mode_dims), discovery_time = float(discovery_time),
+        seed_radii = Float64.(seed_radii), cluster_scales = Float64.(cluster_scales),
+        step = float(step), nseeds, terminal_window = float(terminal_window),
+        preliminary_shifts = copy(data.inputs.z), dbscan_radius = float(dbscan_radius),
+        min_neighbors, min_weight = float(min_weight),
+        save_preliminary_trajectories = data.nsave, ensemblealg,
+    )
+    return _trajectory_gauge_result(data, clusters, diagnostics)
 end

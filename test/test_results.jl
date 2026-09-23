@@ -5,7 +5,7 @@
     sol = dislou_solve(
         0.1 * num(d), fock(d, 2), tlist, [0.4 * a];
         e_ops = [num(d), a], gauge_set = zeros(ComplexF64, 1, 1),
-        ntraj = 6, seed = 41, ensemblealg = :serial, saveat = tlist,
+        ntraj = 6, rng = Xoshiro(41), ensemblealg = :serial, saveat = tlist,
         save_trajectories = true, save_final_states = true
     )
 
@@ -52,12 +52,12 @@ end
     tlist = [0.0, 0.1, 0.2]
     common = (;
         gauge_set = zeros(ComplexF64, 1, 1), ntraj = 2,
-        seed = 3, ensemblealg = :serial,
+        ensemblealg = :serial,
     )
-    states_only = dislou_solve(0 * a, fock(d, 1), tlist, [a]; common...)
+    states_only = dislou_solve(0 * a, fock(d, 1), tlist, [a]; common..., rng = Xoshiro(3))
     observed = dislou_solve(
         0 * a, fock(d, 1), tlist, [a];
-        common..., e_ops = [num(d)]
+        common..., rng = Xoshiro(3), e_ops = [num(d)]
     )
 
     @test states_only.expect === nothing
@@ -91,7 +91,7 @@ end
     tlist = [0.0, 0.4]
     sol = dislou_solve(
         0.3 * (a + a'), fock(d, 3), tlist, [sqrt(10.0) * a];
-        gauge_set = ComplexF64[0 1], ntraj = 8, seed = 91,
+        gauge_set = ComplexF64[0 1], ntraj = 8, rng = Xoshiro(91),
         ensemblealg = :serial, layer3 = true, layer3_sizes = 1,
         residual_tolerance = eps(Float64)
     )
@@ -116,7 +116,7 @@ end
     sol = dislou_solve(
         0 * a, fock(d, 1), tlist, [a];
         gauge_set = zeros(ComplexF64, 1, 1), ntraj = 3,
-        seed = 12, ensemblealg = :serial, save_trajectories = true
+        rng = Xoshiro(12), ensemblealg = :serial, save_trajectories = true
     )
 
     @test sol.expect === nothing

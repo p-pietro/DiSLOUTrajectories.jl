@@ -4,7 +4,8 @@
 # C_μ|ψ̃⟩ / ‖C_μ|ψ̃⟩‖. Tiny negative weights from roundoff are clamped; large negatives
 # signal a broken representation. Gauge superscripts are suppressed here.
 
-# Cumulative-sum weighted choice — mirrors QuantumToolbox's mcsolve_callback_helpers.jl.
+# Cumulative-sum weighted choice, as QuantumToolbox's `_lindblad_jump_affect!`:
+# the first μ with Σ_{ν≤μ} w_ν > rand(rng) Σ_ν w_ν.
 # Paper: μ sampled with Pr(μ) ∝ ⟨C_μ†C_μ⟩_ψ (Eq. 4).
 @inline function _sample_channel(w::AbstractVector{<:Real}, rng, n::Int)
     s = 0.0
@@ -25,9 +26,8 @@
     r = rand(rng) * s
     acc = 0.0
     @inbounds for μ in 1:n
-        w[μ] > 0 || continue
         acc += w[μ]
-        acc >= r && return μ
+        acc > r && return μ
     end
     return last_positive
 end

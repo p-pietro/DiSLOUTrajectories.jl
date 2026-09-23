@@ -36,6 +36,7 @@ using CairoMakie
 using Clustering
 using DiSLOUTrajectories
 using QuantumToolbox
+using Random
 import QuantumCumulants
 ```
 
@@ -130,7 +131,7 @@ trajectory_gauges = discover_gauges(H, c_ops;
     dbscan_radius=1.5,
     min_neighbors=10,
     min_weight=0.02,
-    seed=1,
+    rng=Xoshiro(1),
     ensemblealg=:threads,
 )
 
@@ -206,7 +207,7 @@ sol = dislou_solve(H, ψ0, tlist, c_ops;
     gauge_set=Z,
     ntraj=ntraj,
     ensemblealg=:threads,
-    seed=ensemble_seed,
+    rng=Xoshiro(ensemble_seed),
     saveat=snapshot_times,
     save_trajectories=true,
     save_final_states=true,
@@ -333,7 +334,7 @@ layer3_sol = dislou_solve(H, ψ0, tlist, c_ops;
     gauge_set=Z,
     ntraj=ntraj,
     ensemblealg=:threads,
-    seed=ensemble_seed,
+    rng=Xoshiro(ensemble_seed),
     layer3=true,
     layer3_sizes=[20, 60],
     residual_tolerance=1e-4,

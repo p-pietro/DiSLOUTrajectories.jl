@@ -6,7 +6,7 @@
     sol = dislou_solve(
         H, psi0, tlist, QuantumObject[];
         gauge_set = zeros(ComplexF64, 0, 1),
-        e_ops = [num(d)], ntraj = 3, seed = 8, ensemblealg = :serial,
+        e_ops = [num(d)], ntraj = 3, rng = Xoshiro(8), ensemblealg = :serial,
         saveat = tlist, save_final_states = true
     )
     exact_states = [
@@ -39,7 +39,7 @@ end
     sol = dislou_solve(
         0 * num(d), psi0, [7.0], QuantumObject[];
         gauge_set = zeros(ComplexF64, 0, 1),
-        ntraj = 2, seed = 4, ensemblealg = :serial,
+        ntraj = 2, rng = Xoshiro(4), ensemblealg = :serial,
         save_trajectories = true, save_final_states = true
     )
 
@@ -79,7 +79,7 @@ end
         dislou_solve(
             num(1), fock(1, 0), tlist, QuantumObject[];
             gauge_set = zeros(ComplexF64, 0, 1),
-            ntraj = 2, seed = 5, ensemblealg = :serial
+            ntraj = 2, rng = Xoshiro(5), ensemblealg = :serial
         )
     catch caught
         caught
