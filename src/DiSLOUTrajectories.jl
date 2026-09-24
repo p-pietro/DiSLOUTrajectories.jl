@@ -1,42 +1,35 @@
 """
     DiSLOUTrajectories
 
-Diagonal, Switching, and Locally Optimal Unraveling for finite-dimensional,
-time-independent Lindblad models.
+Diagonal, Switching, and Locally Optimal Unraveling (DiSLOU) of time-independent
+Lindblad models, built on QuantumToolbox's `mcsolve`.
 
-[`dislou_solve`](@ref) requires a finite
-gauge set, runs exact Layers I and II (optimal unraveling and diagonal propagation), and can add optional Layer III reduced space
-propagation. Inputs may be `QuantumToolbox.QuantumObject`s or compatible CPU
-arrays; results use [`DiSLOUSolution`](@ref).
-
-See also [`dislou_solve`](@ref), [`discover_gauges`](@ref).
+[`dislou_solve`](@ref) runs `mcsolve` with the exact propagator
+[`GaugeEigenExponential`](@ref) and a callback that switches gauge after each
+jump. [`discover_gauges`](@ref) finds suitable gauges.
 """
 module DiSLOUTrajectories
 
-using QuantumToolbox
 using LinearAlgebra
 using Random
-using Distributed
+using Statistics
+import Distributed
+using QuantumToolbox
 import SciMLBase
-using SparseArrays
+import SciMLBase: DiscreteCallback, CallbackSet, derivative_discontinuity!
+import SciMLBase: EnsembleAlgorithm, EnsembleSerial, EnsembleThreads, EnsembleDistributed
+import OrdinaryDiffEqCore
+import SciMLOperators: cache_operator
 
-export dislou_solve, discover_gauges, DiSLOUSolution, expect_mean, expect_sem
-export FirstPassageConvergenceError, about, backend_info, cite, versioninfo
-
-const CF = ComplexF64
+export dislou_solve, discover_gauges, GaugeEigenExponential
+export about, backend_info, cite, versioninfo
 
 include("backend.jl")
-include("layer2.jl")
-include("buffers.jl")
-include("gauge_discovery.jl")
-include("first_passage.jl")
-include("layer1.jl")
-include("jump.jl")
-include("recording.jl")
-include("layer3.jl")
-include("ensemble.jl")
-include("result.jl")
+include("gauges.jl")
+include("eigen_exponential.jl")
+include("gauge_router.jl")
 include("solve.jl")
+include("gauge_discovery.jl")
 
 __init__() = Base.Experimental.register_error_hint(_discovery_error_hint, MethodError)
 
