@@ -116,7 +116,6 @@ trajectory_gauges = discover_gauges(
     min_neighbors=10,
     min_weight=0.02,
     rng=Xoshiro(1),
-    ensemblealg=:threads,
 )
 
 preflight_positions = trajectory_gauges.diagnostics.terminal_means
@@ -215,15 +214,15 @@ sol = dislou_solve(
     e_ops=[xa, na, nb],
     gauge_set=sc,
     ntraj,
-    ensemblealg=:threads,
     rng=Xoshiro(ensemble_seed),
     saveat=snapshot_times,
-    save_trajectories=true,
+    keep_runs_results=Val(true),
 )
+sum(length, sol.col_times)
 ```
 
 ```text
-DiSLOUSolution(ntraj=1024, Ne=3, Nt=519, total_jumps=16601)
+16267
 ```
 
 ### Compare observables and inspect a switch
@@ -234,8 +233,8 @@ jumps. The detailed time grid in the preceding block supports this last
 panel.
 
 ```julia
-observable_mean = real.(sol.expect)
-observable_sem = sol.expect_sem
+observable_mean = real.(average_expect(sol))
+observable_sem = std_expect(sol) ./ sqrt(ntraj)
 mesolve_expect = real.(mesolve_sol.expect)
 
 fig_observables = Figure(size=(950, 1150))
@@ -277,7 +276,7 @@ for trajectory in 1:6
     lines!(
         ax_trajectories,
         κ2 .* tlist,
-        real.(sol.trajectory_expect[1, trajectory, :]);
+        real.(sol.expect[1, trajectory, :]);
         label="trajectory $trajectory",
     )
 end
@@ -302,8 +301,8 @@ function persistent_switch_sample(trajectory_x)
 end
 
 switch_candidates = Tuple{Int,Int}[]
-for trajectory in axes(sol.trajectory_expect, 2)
-    sample = persistent_switch_sample(real.(sol.trajectory_expect[1, trajectory, :]))
+for trajectory in axes(sol.expect, 2)
+    sample = persistent_switch_sample(real.(sol.expect[1, trajectory, :]))
     isnothing(sample) || push!(switch_candidates, (trajectory, sample))
 end
 isempty(switch_candidates) && error("no persistent trajectory switch found in κ₂t ∈ $(switch_window)")
@@ -311,7 +310,7 @@ trajectory_index, switch_sample = argmin(
     candidate -> abs(κ2 * tlist[candidate[2]] - sum(switch_window) / 2),
     switch_candidates,
 )
-trajectory_x = real.(sol.trajectory_expect[1, trajectory_index, :])
+trajectory_x = real.(sol.expect[1, trajectory_index, :])
 crossing_interval = findlast(
     index -> signbit(trajectory_x[index]) != signbit(trajectory_x[index + 1]),
     1:switch_sample-1,
@@ -369,7 +368,7 @@ ax_na_zoom = Axis(
 lines!(
     ax_na_zoom,
     zoom_times,
-    real.(sol.trajectory_expect[2, trajectory_index, zoom_indices]);
+    real.(sol.expect[2, trajectory_index, zoom_indices]);
     color=:steelblue,
     linewidth=1.5,
 )
@@ -385,7 +384,7 @@ ax_nb_zoom = Axis(
 lines!(
     ax_nb_zoom,
     zoom_times,
-    real.(sol.trajectory_expect[3, trajectory_index, zoom_indices]);
+    real.(sol.expect[3, trajectory_index, zoom_indices]);
     color=:darkorange,
     linewidth=1.5,
 )
@@ -406,7 +405,7 @@ memory Wigner function at the three snapshot times using a shared color scale.
 ```julia
 xvec = collect(range(-5.0, 5.0; length=121))
 yvec = collect(range(-4.0, 4.0; length=121))
-memory_states = [ptrace(state, 1) for state in sol.states]
+memory_states = [ptrace(state, 1) for state in average_states(sol)]
 wigner_values = [wigner(state, xvec, yvec) for state in memory_states]
 wigner_plots = transpose.(wigner_values)
 color_limit = maximum(maximum(abs, W) for W in wigner_values)
@@ -453,24 +452,24 @@ layer3_sol = dislou_solve(
     e_ops=[xa, na, nb],
     gauge_set=sc,
     ntraj,
-    ensemblealg=:threads,
     rng=Xoshiro(ensemble_seed),
-    layer3=true,
     layer3_sizes=[60, 60],
     residual_tolerance=1e-3,
+    keep_runs_results=Val(true),
 )
+sum(length, layer3_sol.col_times)
 ```
 
 ```text
-DiSLOUSolution(ntraj=1024, Ne=3, Nt=519, total_jumps=16601)
+16267
 ```
 
 Compare the memory-quadrature mean and its standard error with the
 full-space ensemble and the master-equation solution.
 
 ```julia
-layer3_mean = real.(layer3_sol.expect)
-layer3_sem = layer3_sol.expect_sem
+layer3_mean = real.(average_expect(layer3_sol))
+layer3_sem = std_expect(layer3_sol) ./ sqrt(ntraj)
 
 fig_validation = Figure(size=(900, 450))
 ax_validation = Axis(

@@ -106,35 +106,41 @@ size(gauges)
 ## Run the time evolution
 
 Pass the Hamiltonian, initial state, sample times, and collapse operators to
-[`dislou_solve`](@ref). The parameter `gauge_set` is required, while the optional `e_ops` requests expectation
-values. Set the trajectory count and pass a seeded random number generator,
-as for QuantumToolbox's `mcsolve`, so that the run is reproducible:
+[`dislou_solve`](@ref). The parameter `gauge_set` is required; all the other
+keyword arguments are those of QuantumToolbox's `mcsolve`. Here `e_ops` requests
+expectation values, and a seeded random number generator makes the run
+reproducible. `keep_runs_results = Val(true)` keeps the result of every
+trajectory, which we use below to estimate the statistical error:
 
 ```jldoctest quickstart
 using Random
 sol = dislou_solve(H, ψ0, tlist, c_ops;
-    gauge_set = gauges, e_ops, ntraj = 500, rng = Xoshiro(0))
+    gauge_set = gauges, e_ops, ntraj = 500, rng = Xoshiro(0),
+    keep_runs_results = Val(true), progress_bar = Val(false))
 
 (size(sol.expect), sol.times == tlist)
 
 # output
 
-((1, 21), true)
+((1, 500, 21), true)
 ```
 
-The solver uses `ensemblealg = :threads` by default. Layers I
-and II are enabled by default, and in this example we do not activate Layer III.
+As with `mcsolve`, the trajectories run on threads by default and a progress bar is
+shown unless `progress_bar = Val(false)`. Layers I and II are always enabled, and in
+this example we do not activate Layer III.
 
 ## Read and check the result
 
-`sol.expect` and `sol.expect_sem` have one row per observable and one column
-per sample time. [`expect_mean`](@ref) and [`expect_sem`](@ref) select one
-observable as a vector; their default index is `1`. The standard error of the
-mean (SEM) estimates Monte Carlo sampling uncertainty.
+The solution is QuantumToolbox's `TimeEvolutionMCSol`. With `keep_runs_results`,
+`sol.expect[e, trajectory, time]` holds every trajectory; `average_expect(sol)` and
+`std_expect(sol)` give their mean and standard deviation, with one row per
+observable and one column per time. The standard error of the mean (SEM), the
+standard deviation divided by ``\sqrt{N_{\rm traj}}``, estimates the Monte Carlo
+sampling uncertainty.
 
 ```jldoctest quickstart
-mean_n = real.(expect_mean(sol))
-sem_n = expect_sem(sol)
+mean_n = real.(average_expect(sol)[1, :])
+sem_n = std_expect(sol)[1, :] ./ sqrt(sol.ntraj)
 
 (length(mean_n), length(sem_n), all(isfinite, sem_n))
 
@@ -263,8 +269,8 @@ shifts in `.shifts`. You can pass either result as `gauge_set`:
 
 ```jldoctest quickstart
 discovered_sol = dislou_solve(H, ψ0, tlist, c_ops;
-    gauge_set = semiclassical_gauges, e_ops)
-isapprox(real.(expect_mean(discovered_sol)), analytic_n; atol = 1e-5)
+    gauge_set = semiclassical_gauges, e_ops, progress_bar = Val(false))
+isapprox(real.(discovered_sol.expect[1, :]), analytic_n; atol = 1e-5)
 
 # output
 
@@ -275,4 +281,4 @@ true
 
 For complete and more advanced workflows, explore the
 [examples](../examples.md). The [API reference](../api.md) describes in detail
-solver options and the fields of [`DiSLOUSolution`](@ref).
+the solver options.

@@ -1,6 +1,6 @@
 # Installation
 
-`DiSLOUTrajectories.jl` requires Julia 1.10 or later and QuantumToolbox 0.47. To install it, run in an interactive session (REPL):
+`DiSLOUTrajectories.jl` requires Julia 1.10 or later and QuantumToolbox 0.47 to 0.49. To install it, run in an interactive session (REPL):
 
 ```julia
 using Pkg
@@ -47,8 +47,10 @@ Pkg.add("QuantumCumulants")
 using QuantumCumulants
 ```
 
-[```CUDA.jl```](https://cuda.juliagpu.org/stable/) can be installed to perform the initial eigendecomposition and related numerical operations on NVidia GPUs.
-The extension only needs the `CUDACore` and `cuSOLVER` components of CUDA.jl:
+QuantumCumulants 0.7 currently requires QuantumToolbox 0.47, so installing it
+selects that version.
+
+[```CUDA.jl```](https://cuda.juliagpu.org/stable/) can be installed to perform the initial eigendecomposition and related numerical operations on NVidia GPUs:
 
 ```julia
 using Pkg
@@ -57,13 +59,11 @@ using CUDACore, cuSOLVER
 using DiSLOUTrajectories
 ```
 
-Loading the full `CUDA` package works too.
-
-When CUDA is functional, the extension prepares the dense diagonal-basis cache
-on the GPU, including normalization, LU factorizations, and diagnostics, then
-copies the completed cache to the CPU. For now, trajectory propagation and returned
-arrays remain on the CPU. If GPU preparation fails, DiSLOUTrajectories.jl warns once, disables
-further GPU attempts in the process and retries with CPU LAPACK.
+When CUDA is functional, the extension diagonalizes the effective Hamiltonian of
+each gauge on the GPU and copies the eigensystem to the CPU. Trajectory
+propagation and returned arrays remain on the CPU. If the GPU diagonalization
+fails, DiSLOUTrajectories.jl warns once, disables further GPU attempts in the
+process and retries with CPU LAPACK.
 
 Check extension state with `DiSLOUTrajectories.backend_info()`.
 
