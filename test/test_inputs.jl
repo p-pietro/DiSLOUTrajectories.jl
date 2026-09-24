@@ -10,6 +10,7 @@
     @test_throws ArgumentError run(hysteresis = 0)
     @test_throws ArgumentError run(hysteresis = 1.5)
     @test_throws ArgumentError run(residual_tolerance = 0)
+    @test_throws ArgumentError run(residual_tolerance = 1)
     @test_throws ArgumentError run(layer3_sizes = 0)
     @test_throws ArgumentError run(layer3_sizes = 6)
     @test_throws ArgumentError run(layer3_sizes = [1, 2])

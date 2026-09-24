@@ -33,6 +33,13 @@
         @test all(isapprox(sol.col_times[i], sol_dp5.col_times[i]; atol = 1.0e-4) for i in 1:40)
     end
 
+    @testset "the Layer III projection keeps the norm" begin
+        slow = SM._slow_basis(first(alg.bases), 2)
+        ψ = 2 * normalize(slow.V * ComplexF64[1, 1im])   # in the span of the slow modes
+        @test SM._project!(ψ, slow, 1.0e-3, zeros(ComplexF64, N), zeros(ComplexF64, N))
+        @test norm(ψ) ≈ 2
+    end
+
     @test sprint(show, alg) == "GaugeEigenExponential(1 gauge(s), 6 modes)"
     @test SM.OrdinaryDiffEqCore.alg_order(alg) == 1
 end

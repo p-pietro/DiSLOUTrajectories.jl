@@ -36,7 +36,7 @@ Hamiltonian without changing the master equation (Eq. 9):
 # Arguments
 
 - `H`: Time-independent Hamiltonian ``\hat{H}``, a `QuantumObject` operator.
-- `ψ0`: Initial state, a `QuantumObject` ket.
+- `ψ0`: Initial state, a `QuantumObject` ket. As in `mcsolve`, it is not normalized.
 - `tlist`: Times at which the expectation values are computed.
 - `c_ops`: Nonempty vector of time-independent collapse operators ``\hat{C}_\mu``.
 - `gauge_set`: `Nc × Ng` matrix of shifts ``\zeta_\mu^{(g)}``, with one row per collapse
@@ -45,8 +45,8 @@ Hamiltonian without changing the master equation (Eq. 9):
 - `layer3_sizes`: Number of slow modes kept for Layer III, one integer for all gauges
   or one per gauge. Modes degenerate with the kept ones are added. Default `nothing`,
   which disables Layer III.
-- `residual_tolerance`: Largest relative distance ``r_{\rm tol}`` of the state from
-  the slow modes for Layer III. Default `1e-3`.
+- `residual_tolerance`: Largest relative distance ``r_{\rm tol} \in (0, 1)`` of the
+  state from the slow modes for Layer III. Default `1e-3`.
 - `kwargs`: Keyword arguments of `mcsolve`, such as `e_ops`, `ntraj`, `rng`,
   `ensemblealg`, `saveat`, `keep_runs_results`, `progress_bar` or `callback`.
 
@@ -106,7 +106,7 @@ function dislou_solve(
     )
     isempty(c_ops) && throw(ArgumentError("dislou_solve needs at least one collapse operator"))
     0 < hysteresis <= 1 || throw(ArgumentError("hysteresis must be in (0, 1], got $hysteresis"))
-    residual_tolerance > 0 || throw(ArgumentError("residual_tolerance must be positive, got $residual_tolerance"))
+    0 < residual_tolerance < 1 || throw(ArgumentError("residual_tolerance must be in (0, 1), got $residual_tolerance"))
     for key in (:alg, :jump_callback)
         haskey(kwargs, key) && throw(ArgumentError("dislou_solve sets `$key` itself"))
     end

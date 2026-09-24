@@ -217,8 +217,8 @@ function _run_preliminary_trajectories(
     )
     tlist = collect(0.0:float(step):float(discovery_time))
     last(tlist) < discovery_time && push!(tlist, float(discovery_time))
-    tail = findall(>=(discovery_time - terminal_window), tlist)
-    isempty(tail) && (tail = [lastindex(tlist)])
+    start = discovery_time - terminal_window
+    tail = findall(t -> t >= start || t ≈ start, tlist)   # the window, up to rounding of `start`
 
     Hrun, Crun = all(iszero, shifts) ? (H, c_ops) : _shifted_operators(H, c_ops, shifts)
     nmodes = length(mode_ops)

@@ -7,7 +7,7 @@
     kw = (;
         method = :trajectories, mode_ops = [a], mode_dims = [d],
         discovery_time = 0.2, seed_radii = [sqrt(d - 1)], cluster_scales = [1.0],
-        step = 0.02, nseeds = 12, terminal_window = 0.04, preliminary_shifts = preliminary,
+        step = 0.02, nseeds = 12, terminal_window = 0.12, preliminary_shifts = preliminary,
         dbscan_radius = 10.0, min_neighbors = 1, min_weight = 0.0,
         save_preliminary_trajectories = 2,
     )
@@ -40,7 +40,7 @@
         seeds = [rand(rng, UInt64) for _ in 1:kw.nseeds]
         Hrun, Crun = SM._shifted_operators(H, c_ops, preliminary)
         tlist = collect(0.0:kw.step:kw.discovery_time)
-        tail = tlist .>= kw.discovery_time - kw.terminal_window
+        tail = 5:11   # t = 0.08, ..., 0.2, although 0.2 - 0.12 rounds above 0.08
         expected = map(1:kw.nseeds) do seed
             sol = mcsolve(
                 Hrun, coherent(d, amplitudes[seed]), tlist, Crun; e_ops = c_ops, ntraj = 1,
