@@ -198,121 +198,34 @@ For semiclassical discovery, `diagnostics` contains:
 discover_gauges(model, collapse_operators; method::Symbol = :trajectories, kwargs...) =
     _discover_gauges(Val(method), model, collapse_operators; kwargs...)
 
-# Paper Eq. (A.6), implemented by the QuantumCumulants extension.
-function _discover_gauges_semiclassical(hamiltonian::Function, collapse_operators::Function; kwargs...)
-    extension = Base.get_extension(@__MODULE__, :DiSLOUTrajectoriesQuantumCumulantsExt)
-    extension === nothing && throw(
-        ArgumentError(
-            "semiclassical gauge discovery requires QuantumCumulants and ModelingToolkitBase; " *
-                "load them before calling this method"
-        )
-    )
-    return extension._discover_gauges_semiclassical(hamiltonian, collapse_operators; kwargs...)
-end
+# Methods live in DiSLOUTrajectoriesClusteringExt (Val{:trajectories}) and
+# DiSLOUTrajectoriesQuantumCumulantsExt (Val{:semiclassical}).
+function _discover_gauges end
 
-# Paper Appendix A.2: DBSCAN clusters of the terminal amplitudes, implemented by
-# the Clustering extension.
-function _cluster_terminal_means(points::AbstractMatrix{<:Complex}; kwargs...)
-    extension = Base.get_extension(@__MODULE__, :DiSLOUTrajectoriesClusteringExt)
-    extension === nothing && throw(
-        ArgumentError("trajectory gauge discovery requires Clustering; load it before calling this method")
-    )
-    return extension._cluster_terminal_means(points; kwargs...)
-end
+const _DISCOVERY_EXTENSIONS = (
+    trajectories = (:DiSLOUTrajectoriesClusteringExt, "Clustering"),
+    semiclassical = (:DiSLOUTrajectoriesQuantumCumulantsExt, "QuantumCumulants"),
+)
 
-# Paper Eq. (A.8): ζ_μ^(g) from clusters of preliminary trajectories.
-function _discover_gauges_trajectories(
-        H, c_ops;
-        mode_ops, mode_dims, discovery_time, seed_radii, cluster_scales,
-        step = discovery_time / 40, nseeds::Int = 600, terminal_window = 0.0,
-        preliminary_shifts = nothing, dbscan_radius = 1.5,
-        min_neighbors::Int = 10, min_weight = 0.02, rng::AbstractRNG = Random.default_rng(),
-        save_preliminary_trajectories::Int = 0, ensemblealg::EnsembleAlgorithm = EnsembleThreads()
-    )
-    shifts = _check_discovery_inputs(
-        H, c_ops, mode_ops, mode_dims, discovery_time, seed_radii, step, nseeds,
-        terminal_window, preliminary_shifts, save_preliminary_trajectories, ensemblealg
-    )
-    # Checks the clustering options, and that the Clustering extension is loaded, before any run.
-    _cluster_terminal_means(zeros(ComplexF64, length(mode_ops), 0); cluster_scales, dbscan_radius, min_neighbors, min_weight)
-    data = _run_preliminary_trajectories(
-        H, c_ops, shifts, mode_ops, mode_dims, discovery_time, seed_radii, step, nseeds,
-        terminal_window, rng, save_preliminary_trajectories, ensemblealg
-    )
-    clusters = _cluster_terminal_means(
-        data.terminal_means;
-        cluster_scales, dbscan_radius, min_neighbors, min_weight
-    )
-    isempty(clusters.counts) &&
-        throw(ArgumentError("trajectory discovery found no retained DBSCAN clusters"))
-
-    # ζ_μ^(g) = -⟨C_μ⟩, averaged over the trajectories of cluster g.
-    gauges = axes(clusters.centers, 2)
-    gauge_shifts = stack(-vec(mean(data.terminal_collapse_means[:, clusters.labels .== g]; dims = 2)) for g in gauges)
-    diagnostics = (;
-        counts = clusters.counts, labels = clusters.labels,
-        data.terminal_means, data.terminal_occupations, data.terminal_collapse_means,
-        times = data.tlist,
-        preliminary_traces = (;
-            indices = collect(1:data.nsave),
-            states = data.states, means = data.traces, occupations = data.occupations,
-        ),
-        preliminary_jump_times = data.jump_times,
-        preliminary_jump_channels = data.jump_channels,
-        mode_dims = collect(Int, mode_dims), discovery_time = float(discovery_time),
-        seed_radii = Float64.(seed_radii), cluster_scales = Float64.(cluster_scales),
-        step = float(step), nseeds, terminal_window = float(terminal_window),
-        preliminary_shifts = shifts, dbscan_radius = float(dbscan_radius),
-        min_neighbors, min_weight = float(min_weight),
-        save_preliminary_trajectories = data.nsave, ensemblealg,
-    )
-    return (;
-        shifts = gauge_shifts, method = :trajectories, centers = clusters.centers,
-        weights = clusters.weights, diagnostics,
-    )
-end
-
-# Validate the inputs of trajectory discovery; returns the preliminary shifts.
-function _check_discovery_inputs(
-        H, c_ops, mode_ops, mode_dims, discovery_time, seed_radii, step, nseeds,
-        terminal_window, preliminary_shifts, save_preliminary_trajectories, ensemblealg
-    )
-    nmodes = length(mode_ops)
-    nmodes > 0 || throw(ArgumentError("need at least one mode operator"))
-    length(mode_dims) == nmodes || throw(DimensionMismatch("need one subsystem dimension per mode"))
-    all(>=(2), mode_dims) || throw(ArgumentError("mode dimensions must be at least 2"))
-    length(seed_radii) == nmodes || throw(DimensionMismatch("need one seed radius per mode"))
-    all(r -> isfinite(r) && r >= 0, seed_radii) ||
-        throw(ArgumentError("seed_radii must be finite and nonnegative"))
-    isfinite(discovery_time) && discovery_time > 0 ||
-        throw(ArgumentError("discovery_time must be finite and positive"))
-    isfinite(step) && step > 0 || throw(ArgumentError("step must be finite and positive"))
-    isfinite(terminal_window) && terminal_window >= 0 ||
-        throw(ArgumentError("terminal_window must be finite and nonnegative"))
-    nseeds >= 1 || throw(ArgumentError("nseeds must be positive"))
-    save_preliminary_trajectories >= 0 ||
-        throw(ArgumentError("save_preliminary_trajectories must be nonnegative"))
-    ensemblealg isa Union{EnsembleSerial, EnsembleThreads, EnsembleDistributed} ||
-        throw(ArgumentError("ensemblealg must be EnsembleSerial(), EnsembleThreads(), or EnsembleDistributed()"))
-    ensemblealg isa EnsembleDistributed && Distributed.nprocs() <= 1 &&
-        throw(ArgumentError("EnsembleDistributed() requires worker processes"))
-
-    dims = Tuple(Int.(mode_dims))
-    has_dims(op) = size(op.data) == (prod(dims), prod(dims)) &&
-        Tuple(first(op.dims)) == dims && Tuple(last(op.dims)) == dims
-    has_dims(H) || throw(DimensionMismatch("mode_dims=$dims do not match H tensor dimensions $(H.dims)"))
-    all(has_dims, mode_ops) || throw(DimensionMismatch("every mode operator must have tensor dimensions $dims"))
-    all(has_dims, c_ops) || throw(DimensionMismatch("every collapse operator must have tensor dimensions $dims"))
-
-    shifts = preliminary_shifts === nothing ? zeros(ComplexF64, length(c_ops)) : Vector{ComplexF64}(preliminary_shifts)
-    length(shifts) == length(c_ops) ||
-        throw(DimensionMismatch("preliminary_shifts must contain one shift per collapse channel"))
-    all(isfinite, shifts) || throw(ArgumentError("preliminary_shifts must be finite"))
-    return shifts
+# Turns the bare MethodError of an unloaded or unknown method into an actionable hint.
+function _discovery_error_hint(io, exc, argtypes, kwargs)
+    f = exc.f === Core.kwcall && length(exc.args) >= 2 ? exc.args[2] : exc.f
+    f === _discover_gauges && !isempty(argtypes) && argtypes[1] <: Val || return
+    method = argtypes[1].parameters[1]
+    if !haskey(_DISCOVERY_EXTENSIONS, method)
+        print(io, "\nUnsupported gauge discovery method $(repr(method)); use :trajectories or :semiclassical.")
+        return
+    end
+    extension, package = _DISCOVERY_EXTENSIONS[method]
+    Base.get_extension(@__MODULE__, extension) === nothing || return
+    print(io, "\nmethod=:$method requires $package; run `using $package` before calling discover_gauges.")
+    return
 end
 
 # Paper Eqs. (A.7–A.8): one trajectory from each random coherent state, averaging
 # the mode amplitudes and the collapse expectations over the terminal window.
+# Used by the Clustering extension; it lives here so that distributed workers can
+# run it without loading Clustering.
 function _run_preliminary_trajectories(
         H, c_ops, shifts, mode_ops, mode_dims, discovery_time, seed_radii, step, nseeds,
         terminal_window, rng, save_preliminary_trajectories, ensemblealg
@@ -339,7 +252,7 @@ function _run_preliminary_trajectories(
             keep_runs_results = Val(true), ensemblealg = EnsembleSerial(), progress_bar = Val(false)
         )
         expect = sol.expect[:, 1, :]
-        terminal = vec(mean(expect[:, tail]; dims = 2))
+        terminal = vec(sum(expect[:, tail]; dims = 2)) / length(tail)
         point <= nsave || return (; terminal, trace = nothing)
         states = stack(ψ.data for ψ in vec(sol.states))
         return (; terminal, trace = (; states, expect, col_times = sol.col_times[1], col_which = sol.col_which[1]))
