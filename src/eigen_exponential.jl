@@ -93,8 +93,9 @@ results, is exact, so steps can be as long as the time between jumps. The arrays
 follow those of `H` and `c_ops`: with GPU operators, for example, the decomposition
 and the propagation run on the GPU.
 
-Pass it to `mcsolve` together with the same `H` and `c_ops`. Stopping at the times of
-`tlist` keeps the search for each jump time within one interval:
+Pass it to `mcsolve` together with the same `H` and `c_ops`. Without stops, a step
+spans the time until the next jump or the end, which is exact but makes each jump
+search longer. Stopping at the times of `tlist` bounds the searched interval:
 
 ```julia
 mcsolve(H, ψ0, tlist, c_ops; alg = GaugeEigenExponential(H, c_ops), tstops = tlist)
