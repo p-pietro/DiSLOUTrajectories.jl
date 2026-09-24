@@ -18,6 +18,11 @@
     @test_throws ArgumentError dislou_solve(
         m.H, m.ψ0, [0.0, 1.0], typeof(m.H)[]; gauge_set = zeros(ComplexF64, 0, 1)
     )
+    # H_eff = [-i/2 -i; 0 -i/2] is a Jordan block, with no eigenbasis.
+    @test_throws "not diagonalizable" dislou_solve(
+        sigmay() / 2, fock(2, 1), [0.0, 1.0], [Qobj(ComplexF64[1 1; 0 0])];
+        gauge_set = zeros(ComplexF64, 1, 1), quiet...
+    )
 end
 
 @testset "package information" begin
