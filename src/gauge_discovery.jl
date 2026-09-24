@@ -346,13 +346,13 @@ function _run_preliminary_trajectories(
     end
 
     results = _map_seeds(relax, nseeds, ensemblealg)
-    terminal = stack(result.terminal for result in results)
+    averages = stack(result.terminal for result in results)
     traces = [results[point].trace for point in 1:nsave]
     return (;
         tlist, nsave,
-        terminal_means = terminal[modes, :],
-        terminal_occupations = real.(terminal[occupations, :]),
-        terminal_collapse_means = terminal[collapses, :],
+        terminal_means = averages[modes, :],
+        terminal_occupations = real.(averages[occupations, :]),
+        terminal_collapse_means = averages[collapses, :],
         states = [trace.states for trace in traces],
         traces = [trace.expect[modes, :] for trace in traces],
         occupations = [real.(trace.expect[occupations, :]) for trace in traces],
