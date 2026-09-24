@@ -272,8 +272,8 @@ jobs:
           fail_ci_if_error: true
           use_oidc: true
 
-  cuda:
-    name: CUDA extension (GPU optional)
+  gpu:
+    name: GPU arrays (GPU optional)
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -292,10 +292,10 @@ jobs:
             Pkg.develop(PackageSpec(path=pwd()))
             Pkg.instantiate()
           '
-      - name: Run conditional CUDA checks
+      - name: Run the GPU checks when a GPU is available
         run: >-
           julia --code-coverage=@. --project=test --startup-file=no
-          test/junit.jl test/testsetup.jl test/test_cuda_extension.jl
+          test/junit.jl test/testsetup.jl test/test_gpu.jl
       - uses: julia-actions/julia-processcoverage@v1
         with:
           directories: src,ext

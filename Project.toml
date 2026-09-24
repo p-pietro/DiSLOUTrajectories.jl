@@ -15,7 +15,6 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SciMLOperators = "c0aeaf25-5076-4817-a8d5-81caf7dfa961"
 
 [weakdeps]
-CUDACore = "bd0ed864-bdfe-4181-a5ed-ce625a5fdea2"
 Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
@@ -23,15 +22,12 @@ ModelingToolkitBase = "7771a370-6774-4173-bd38-47e70ca0b839"
 QuantumCumulants = "35bcea6d-e19f-57db-af74-8011de6c7255"
 SimpleNonlinearSolve = "727e6d20-b764-4bd8-a329-72de5adea6c7"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-cuSOLVER = "887afef0-6a32-4de5-add4-7827692ba8fc"
 
 [extensions]
-DiSLOUTrajectoriesCUDAExt = ["CUDACore", "cuSOLVER"]
 DiSLOUTrajectoriesClusteringExt = ["Clustering", "Distances", "Statistics"]
 DiSLOUTrajectoriesQuantumCumulantsExt = ["QuantumCumulants", "ModelingToolkitBase", "SimpleNonlinearSolve", "ForwardDiff"]
 
 [compat]
-CUDACore = "6"
 Clustering = "0.15"
 Distances = "0.10"
 Distributed = "1.10"
@@ -47,7 +43,6 @@ SciMLOperators = "1.26"
 SimpleNonlinearSolve = "2"
 Statistics = "1.10"
 Test = "1.10"
-cuSOLVER = "6"
 julia = "1.10"
 
 [extras]

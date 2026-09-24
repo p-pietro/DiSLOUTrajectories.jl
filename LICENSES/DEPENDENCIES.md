@@ -18,7 +18,6 @@ DiSLOUTrajectories.jl depends directly on or optionally integrates with the foll
 
 | Project                             | License |
 | ----------------------------------- | ------- |
-| CUDA.jl                             | MIT     |
 | Clustering.jl                       | MIT     |
 | Distances.jl                        | MIT     |
 | ForwardDiff.jl                      | MIT     |

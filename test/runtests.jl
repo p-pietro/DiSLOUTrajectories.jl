@@ -8,7 +8,7 @@ end
 include("testsetup.jl")
 
 # The optional-dependency and multi-process suites (test_semiclassical.jl,
-# test_cuda_extension.jl, test_distributed.jl) run in dedicated CI jobs.
+# test_gpu.jl, test_distributed.jl) run in dedicated CI jobs.
 @testset "DiSLOUTrajectories" begin
     include("test_eigen_exponential.jl")
     include("test_dislou_solve.jl")
