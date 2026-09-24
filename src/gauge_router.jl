@@ -45,6 +45,7 @@ function _initialize_router(callback, u, t, integrator)
     router = callback.affect!
     integrator.cache.gauge = router.initial_gauge
     integrator.cache.reduced = router.initial_reduced
+    copyto!(_jump_state(integrator).c_ops, router.jump_ops[router.initial_gauge])
     return nothing
 end
 
@@ -52,14 +53,14 @@ _router_callback(router::GaugeRouter) =
     DiscreteCallback(router, router; initialize = _initialize_router, save_positions = (false, false))
 
 # Layer III (paper Eq. 21): if the relative residual ‖ψ - QQ†ψ‖/‖ψ‖ is at most
-# `tolerance`, replace ψ by its normalized projection QQ†ψ on the slow modes.
-# Returns whether ψ was projected.
+# `tolerance`, replace ψ by its projection QQ†ψ on the slow modes, rescaled to the
+# norm of ψ (1 after a jump). Returns whether ψ was projected.
 function _project!(ψ, basis::EigenBasis, tolerance, coefficients, residual)
     q = view(coefficients, 1:length(basis))
     mul!(q, basis.Q', ψ)
     mul!(copyto!(residual, ψ), basis.Q, q, -1, 1)
-    norm(residual) <= tolerance * norm(ψ) || return false
-    mul!(ψ, basis.Q, q)
-    normalize!(ψ)
+    nψ = norm(ψ)
+    norm(residual) <= tolerance * nψ || return false
+    mul!(ψ, basis.Q, rmul!(q, nψ / norm(q)))
     return true
 end
