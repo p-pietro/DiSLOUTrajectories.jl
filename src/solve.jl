@@ -55,8 +55,11 @@ Hamiltonian without changing the master equation (Eq. 9):
 - `dislou_solve` sets the `alg` and `jump_callback` of `mcsolve` itself.
 - Jump records (`col_times`, `col_which`) refer to the shifted operators of the gauge
   that was active at each jump.
-- Layers I and II are exact up to floating-point errors. Layer III replaces the state
-  by its projection after each accepted jump, an error below `residual_tolerance`.
+- Layers I and II are exact up to floating-point errors, which grow with the condition
+  number of the eigenvectors of each effective Hamiltonian. `dislou_solve` warns when
+  half of the digits can be lost, and throws when an effective Hamiltonian is not
+  diagonalizable. Layer III replaces the state by its projection after each accepted
+  jump, an error below `residual_tolerance`.
 - Each gauge is diagonalized once, which takes ``O(N^3)`` time and ``O(N^2)`` memory for
   an ``N``-dimensional Hilbert space. With `e_ops = nothing`, `sol.expect` is an empty
   matrix instead of `nothing`.

@@ -4,7 +4,8 @@
 
 # Modes of the no-jump generator L = -i H_eff: eigenvalues `λ` and right
 # eigenvectors `V` (columns), either all of them (Layer II) or only the slowest
-# ones (Layer III). The factorization V = Q R gives the coordinates of a state.
+# ones (Layer III). With V = Q R, the coordinates c = R⁻¹ Q†ψ of a state solve
+# V c = ψ without inverting V, and Q Q† projects on the span of the modes (Layer III).
 # The arrays have the type of the model's arrays, for example GPU arrays.
 struct EigenBasis{T <: Number, VT <: AbstractVector{T}, MT <: AbstractMatrix{T}}
     λ::VT
@@ -38,10 +39,20 @@ _effective_hamiltonian(H, c_ops) = H - im * sum(C' * C for C in c_ops) / 2
 function _full_basis(Heff::AbstractMatrix)
     F = eigen(to_dense(Heff))
     basis = EigenBasis(-im .* F.values, F.vectors)
-    # Warn when half of the digits are lost. The estimate runs on the CPU, where it is cheap.
+    # The coordinates of a state lose at most log10(κ) digits, κ being the condition
+    # number of V (estimated on the CPU, where it is cheap); physical states usually
+    # lose far fewer. Near an exceptional point κ grows, up to κ ≈ 1/ε when H_eff has
+    # no eigenbasis at all.
     κ = cond(UpperTriangular(collect(basis.R.data)), 1)
-    κ < 1 / sqrt(eps(real(eltype(basis.λ)))) || @warn "The eigenvectors of the effective Hamiltonian are ill-conditioned \
-        (condition number ≈ $(round(κ; sigdigits = 2))), so the propagation loses accuracy." maxlog = 1
+    ϵ = eps(real(eltype(basis.λ)))
+    κ < 1 / ϵ || throw(
+        ArgumentError(
+            "the effective Hamiltonian is not diagonalizable: its eigenvectors have condition \
+            number ≈ $(round(κ; sigdigits = 2)), as at an exceptional point"
+        )
+    )
+    κ < 1 / sqrt(ϵ) || @warn "The eigenvectors of the effective Hamiltonian have condition number \
+        ≈ $(round(κ; sigdigits = 2)), so the propagation can lose up to $(round(Int, log10(κ))) digits."
     return basis
 end
 
