@@ -26,13 +26,12 @@ include("fixtures/two_mode_diamond.jl")
     )
     fixture = two_mode_diamond_numerical_fixture(Tuple(Int.(limits) .+ 1))
     solution = dislou_solve(
-        fixture.H, fixture.psi0, [0.0], fixture.c_ops;
-        gauge_set = result, ntraj = 1, rng = Xoshiro(5), ensemblealg = :serial
+        fixture.H, fixture.psi0, [0.0, 0.1], fixture.c_ops;
+        gauge_set = result, ntraj = 2, rng = Xoshiro(5), progress_bar = Val(false)
     )
 
-    @test solution isa DiSLOUSolution
-    @test solution.gauge_diagnostics.method === :semiclassical
-    @test solution.gauge_diagnostics.count == size(result.shifts, 2)
+    @test solution isa TimeEvolutionMCSol
+    @test length(solution.alg.bases) == size(result.shifts, 2)
 end
 
 function captured_argument_error(f)
@@ -194,5 +193,5 @@ end
     @test size(result.diagnostics.roots, 1) == 2
     @test length(result.diagnostics.stability) == size(result.diagnostics.roots, 2)
     @test size(result.diagnostics.rejected, 1) == 2
-    @test DiSLOUTrajectories._validated_gauge_data(result, size(result.shifts, 1)).shifts == result.shifts
+    @test DiSLOUTrajectories._gauge_shifts(result, size(result.shifts, 1)) == result.shifts
 end
