@@ -64,13 +64,14 @@ Hamiltonian `H` and collapse operators `c_ops`:
 ```
 
 The decomposition ``-i H_{\rm eff} = V \Lambda V^{-1}`` is computed once. Each step,
-and each evaluation of the dense output used to locate the jumps, is exact. Steps
-therefore only stop at jumps and at the times where `mcsolve` saves results.
+and each evaluation of the dense output used to locate the jumps and to save
+results, is exact, so steps can be as long as the time between jumps.
 
-Pass it to `mcsolve` together with the same `H` and `c_ops`:
+Pass it to `mcsolve` together with the same `H` and `c_ops`. Stopping at the times of
+`tlist` keeps the search for each jump time within one interval:
 
 ```julia
-mcsolve(H, ψ0, tlist, c_ops; alg = GaugeEigenExponential(H, c_ops))
+mcsolve(H, ψ0, tlist, c_ops; alg = GaugeEigenExponential(H, c_ops), tstops = tlist)
 ```
 
 [`dislou_solve`](@ref) builds it with one eigenbasis per gauge, plus the slow-mode
