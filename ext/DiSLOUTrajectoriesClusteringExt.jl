@@ -63,7 +63,7 @@ function _cluster_terminal_means(
     return (; centers, weights = Float64[record.weight for record in records], counts = Int[record.count for record in records], labels = final_labels)
 end
 
-# Paper Eq. (A.8): ζ_μ^(g) from clusters of preliminary trajectories.
+# Paper Eq. (A.7): ζ_μ^(g) from clusters of preliminary trajectories.
 function DiSLOUTrajectories._discover_gauges(
         ::Val{:trajectories}, H, c_ops;
         mode_ops, mode_dims, discovery_time, seed_radii, cluster_scales,

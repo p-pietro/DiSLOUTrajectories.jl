@@ -207,7 +207,7 @@ function _discover_gauges(::Val{method}, args...; kwargs...) where {method}
     throw(ArgumentError("method = :$method requires $package. Try running `using $package` first."))
 end
 
-# Paper Eqs. (A.7–A.8): one trajectory from each random coherent state, averaging
+# Paper Eqs. (A.6–A.7): one trajectory from each random coherent state, averaging
 # the mode amplitudes and the collapse expectations over the terminal window.
 # Used by the Clustering extension; it lives here so that distributed workers can
 # run it without loading Clustering.

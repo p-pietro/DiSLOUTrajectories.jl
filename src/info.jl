@@ -56,7 +56,7 @@ function cite(io::IO = stdout)
 
     @article{Pacchioni2026Diagonal,
       author = {Pietro Pacchioni and Patrick Winkel and Fabrizio Minganti},
-      title = {Diagonal, Switching, and Locally Optimal Unraveling efficient quantum trajectories in metastable open quantum systems},
+      title = {Diagonal, Switching, and Locally Optimal Unraveling for efficient quantum trajectories in metastable open quantum systems},
       year = {2026}
     }
     """
