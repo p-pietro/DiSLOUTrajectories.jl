@@ -31,7 +31,7 @@ include("../reporting/check.jl")
         for (f, args) in (
                 (DiSLOUTrajectories._coordinates!, (similar(ψ), basis, ψ)),
                 (DiSLOUTrajectories._project!, (copy(ψ), basis, 1.0e-3, similar(ψ), similar(ψ))),
-                (DiSLOUTrajectories._gauge_activities, (C, zeros(ComplexF64, 1, 2), ψ, similar(ψ))),
+                (DiSLOUTrajectories._gauge_activities!, (zeros(2), C, zeros(ComplexF64, 1, 2), ψ, similar(ψ))),
             )
             @testset "$(nameof(f))" begin
                 JET.test_call(f, typeof.(args); target_modules = (DiSLOUTrajectories,), mode = :basic)

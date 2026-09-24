@@ -27,7 +27,7 @@ end
 # Affect: switch gauge (paper Eq. 13) and, with Layer III, project on its slow modes.
 function (router::GaugeRouter)(integrator)
     cache = integrator.cache
-    A = _gauge_activities(router.C, router.shifts, integrator.u, cache.tmp)
+    A = _gauge_activities!(cache.activities, router.C, router.shifts, integrator.u, cache.tmp)
     gauge = _next_gauge(A, cache.gauge, router.hysteresis)
     if gauge != cache.gauge
         cache.gauge = gauge

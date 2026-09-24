@@ -28,11 +28,11 @@ function _shifted_operators(H, c_ops, ζ)
     return Hg, Cg
 end
 
-# Paper Eq. (11) for all gauges. With the moments of the physical operators C_μ,
-# A_g(ψ) = Σ_μ ‖(C_μ + ζ_μg) ψ‖² = Σ_μ (⟨C_μ†C_μ⟩ + 2 Re(ζ_μg* ⟨C_μ⟩) + |ζ_μg|²).
-function _gauge_activities(C, shifts, ψ, tmp)
+# Paper Eq. (11) for all gauges, written into `A`. With the moments of the physical
+# operators C_μ, A_g(ψ) = Σ_μ ‖(C_μ + ζ_μg) ψ‖² = Σ_μ (⟨C_μ†C_μ⟩ + 2 Re(ζ_μg* ⟨C_μ⟩) + |ζ_μg|²).
+function _gauge_activities!(A, C, shifts, ψ, tmp)
     norm2 = real(dot(ψ, ψ))
-    A = zeros(size(shifts, 2))
+    fill!(A, 0)
     for μ in eachindex(C)
         mul!(tmp, C[μ], ψ)
         mean = dot(ψ, tmp) / norm2
