@@ -98,6 +98,7 @@ function dislou_solve(
         residual_tolerance::Real = 1.0e-3,
         e_ops = nothing,
         callback = nothing,
+        tstops = Float64[],
         kwargs...,
     )
     isempty(c_ops) && throw(ArgumentError("dislou_solve needs at least one collapse operator"))
@@ -131,8 +132,11 @@ function dislou_solve(
     # The norm decreases monotonically between jumps, so checking the step ends is
     # enough to detect a jump (the default only from QuantumToolbox 0.49).
     jump_callback = ContinuousLindbladJumpCallback(interp_points = 0)
+    # Exact steps can be arbitrarily long. Stopping at each time of `tlist` keeps the
+    # jump-time search within one interval, and results are saved at step ends.
+    tstops = sort!(unique!(vcat(collect(Float64, tlist), tstops)))
 
     H0, C0 = gauges[g0]
     ψ0 = QuantumObject(ψ; type = Ket(), dims = ψ0.dimensions)
-    return mcsolve(H0, ψ0, tlist, C0; alg, e_ops, callback, jump_callback, kwargs...)
+    return mcsolve(H0, ψ0, tlist, C0; alg, e_ops, callback, jump_callback, tstops, kwargs...)
 end
