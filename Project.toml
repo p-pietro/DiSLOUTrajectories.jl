@@ -3,7 +3,7 @@ uuid = "9f5bba26-dedd-41f9-9696-1e3a5af23d67"
 version = "0.1.0"
 authors = ["Pietro Pacchioni", "Fabrizio Minganti"]
 license = "BSD-3-Clause"
-repo = "https://github.com/Alice-Bob-SW/DiSLOUTrajectories.jl"
+repo = "https://github.com/p-pietro/DiSLOUTrajectories.jl"
 
 [deps]
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"

@@ -6,8 +6,8 @@
 | **Runtests** | [![CI][CI-img]][CI-url] [![Coverage][codecov-img]][codecov-url] |
 | **Code Quality** | [![Code Quality][code-quality-img]][code-quality-url] [![Aqua QA][aqua-img]][aqua-url] [![JET][jet-img]][jet-url] [![code style: runic][runic-img]][runic-url] |
 
-[release-img]: https://img.shields.io/github/v/release/Alice-Bob-SW/DiSLOUTrajectories.jl.svg
-[release-url]: https://github.com/Alice-Bob-SW/DiSLOUTrajectories.jl/releases
+[release-img]: https://img.shields.io/github/v/release/p-pietro/DiSLOUTrajectories.jl.svg
+[release-url]: https://github.com/p-pietro/DiSLOUTrajectories.jl/releases
 
 [license-img]: https://img.shields.io/badge/license-BSD--3--Clause-blue.svg
 [license-url]: LICENSE.md
@@ -15,14 +15,14 @@
 [cite-img]: https://img.shields.io/badge/cite-ArXiV-blue
 [cite-url]: https://arxiv.org/
 
-[CI-img]: https://github.com/Alice-Bob-SW/DiSLOUTrajectories.jl/actions/workflows/CI.yml/badge.svg
-[CI-url]: https://github.com/Alice-Bob-SW/DiSLOUTrajectories.jl/actions/workflows/CI.yml
+[CI-img]: https://github.com/p-pietro/DiSLOUTrajectories.jl/actions/workflows/CI.yml/badge.svg
+[CI-url]: https://github.com/p-pietro/DiSLOUTrajectories.jl/actions/workflows/CI.yml
 
-[codecov-img]: https://codecov.io/gh/Alice-Bob-SW/DiSLOUTrajectories.jl/graph/badge.svg
-[codecov-url]: https://codecov.io/gh/Alice-Bob-SW/DiSLOUTrajectories.jl
+[codecov-img]: https://codecov.io/gh/p-pietro/DiSLOUTrajectories.jl/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/p-pietro/DiSLOUTrajectories.jl
 
-[code-quality-img]: https://github.com/Alice-Bob-SW/DiSLOUTrajectories.jl/actions/workflows/Code-Quality.yml/badge.svg
-[code-quality-url]: https://github.com/Alice-Bob-SW/DiSLOUTrajectories.jl/actions/workflows/Code-Quality.yml
+[code-quality-img]: https://github.com/p-pietro/DiSLOUTrajectories.jl/actions/workflows/Code-Quality.yml/badge.svg
+[code-quality-url]: https://github.com/p-pietro/DiSLOUTrajectories.jl/actions/workflows/Code-Quality.yml
 
 [aqua-img]: https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg
 [aqua-url]: https://github.com/JuliaTesting/Aqua.jl
@@ -98,7 +98,7 @@ sem_n = expect_sem(sol)
 
 ## Documentation
 
-The documentation is published at <https://alice-bob-sw.github.io/DiSLOUTrajectories.jl/>.
+The documentation is published at <https://p-pietro.github.io/DiSLOUTrajectories.jl/>.
 
 To build the manual and run its doctests, locally:
 

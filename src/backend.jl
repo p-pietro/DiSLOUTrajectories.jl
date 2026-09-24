@@ -74,7 +74,7 @@ const _CITATION_BIBTEX = raw"""@software{Pacchioni2026DiSLOU,
   title = {DiSLOUTrajectories.jl},
   year = {2026},
   license = {BSD-3-Clause},
-  url = {https://github.com/Alice-Bob-SW/DiSLOUTrajectories.jl}
+  url = {https://github.com/p-pietro/DiSLOUTrajectories.jl}
 }
 
 @article{Pacchioni2026Diagonal,
@@ -118,8 +118,8 @@ function versioninfo(io::IO = stdout)
 
     println(io, "\nCPU preparation backend: ", uppercase(string(backend.cpu)))
     println(io, "Trajectory propagation runs on the CPU.")
-    println(io, "\nDocumentation: https://alice-bob-sw.github.io/DiSLOUTrajectories.jl/")
-    println(io, "Repository:    https://github.com/Alice-Bob-SW/DiSLOUTrajectories.jl")
+    println(io, "\nDocumentation: https://p-pietro.github.io/DiSLOUTrajectories.jl/")
+    println(io, "Repository:    https://github.com/p-pietro/DiSLOUTrajectories.jl")
     println(io, "Citation:      run cite() for BibTeX.")
     return nothing
 end

@@ -27,4 +27,4 @@ matrices, and various diagnostic data. Refer to the [API reference](api.md) for 
 - [Explore the examples](examples.md).
 - [Read the API reference](api.md).
 
-The source code is available at <https://github.com/Alice-Bob-SW/DiSLOUTrajectories.jl>.
+The source code is available at <https://github.com/p-pietro/DiSLOUTrajectories.jl>.

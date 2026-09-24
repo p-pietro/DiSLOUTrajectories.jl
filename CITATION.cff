@@ -7,8 +7,8 @@ authors:
     family-names: Pacchioni
   - given-names: Fabrizio
     family-names: Minganti
-repository-code: "https://github.com/Alice-Bob-SW/DiSLOUTrajectories.jl"
-url: "https://alice-bob-sw.github.io/DiSLOUTrajectories.jl/"
+repository-code: "https://github.com/p-pietro/DiSLOUTrajectories.jl"
+url: "https://p-pietro.github.io/DiSLOUTrajectories.jl/"
 license: BSD-3-Clause
 version: "0.1.0"
 preferred-citation:

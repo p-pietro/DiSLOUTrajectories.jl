@@ -48,7 +48,7 @@ makedocs(;
     doctest = true,
     linkcheck = true,
     # Anonymous GitHub links cannot be checked until the source repository is public.
-    linkcheck_ignore = [r"^https://github\.com/Alice-Bob-SW/DiSLOUTrajectories\.jl(?:/|$)"],
+    linkcheck_ignore = [r"^https://github\.com/p-pietro/DiSLOUTrajectories\.jl(?:/|$)"],
     format = Documenter.HTML(
         canonical = "https://$(lowercase(repository_owner)).github.io/$(repository_name)/",
         edit_link = "main",
