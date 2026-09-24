@@ -12,3 +12,4 @@ logs/
 !test/fixtures/clustering_two_mode.jld2
 .tokensave/
 .worktrees/
+.vscode/
