@@ -198,28 +198,13 @@ For semiclassical discovery, `diagnostics` contains:
 discover_gauges(model, collapse_operators; method::Symbol = :trajectories, kwargs...) =
     _discover_gauges(Val(method), model, collapse_operators; kwargs...)
 
-# Methods live in DiSLOUTrajectoriesClusteringExt (Val{:trajectories}) and
-# DiSLOUTrajectoriesQuantumCumulantsExt (Val{:semiclassical}).
-function _discover_gauges end
-
-const _DISCOVERY_EXTENSIONS = (
-    trajectories = (:DiSLOUTrajectoriesClusteringExt, "Clustering"),
-    semiclassical = (:DiSLOUTrajectoriesQuantumCumulantsExt, "QuantumCumulants"),
-)
-
-# Turns the bare MethodError of an unloaded or unknown method into an actionable hint.
-function _discovery_error_hint(io, exc, argtypes, kwargs)
-    f = exc.f === Core.kwcall && length(exc.args) >= 2 ? exc.args[2] : exc.f
-    f === _discover_gauges && !isempty(argtypes) && argtypes[1] <: Val || return
-    method = argtypes[1].parameters[1]
-    if !haskey(_DISCOVERY_EXTENSIONS, method)
-        print(io, "\nUnsupported gauge discovery method $(repr(method)); use :trajectories or :semiclassical.")
-        return
-    end
-    extension, package = _DISCOVERY_EXTENSIONS[method]
-    Base.get_extension(@__MODULE__, extension) === nothing || return
-    print(io, "\nmethod=:$method requires $package; run `using $package` before calling discover_gauges.")
-    return
+# The methods live in the Clustering (:trajectories) and QuantumCumulants
+# (:semiclassical) extensions. This fallback runs when they are not loaded.
+function _discover_gauges(::Val{method}, args...; kwargs...) where {method}
+    package = get((trajectories = "Clustering", semiclassical = "QuantumCumulants"), method, nothing)
+    package === nothing &&
+        throw(ArgumentError("unknown gauge discovery method :$method; use :trajectories or :semiclassical"))
+    throw(ArgumentError("method = :$method requires $package. Try running `using $package` first."))
 end
 
 # Paper Eqs. (A.7–A.8): one trajectory from each random coherent state, averaging
