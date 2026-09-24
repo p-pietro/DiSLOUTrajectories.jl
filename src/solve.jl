@@ -137,8 +137,9 @@ function dislou_solve(
     # The norm decreases monotonically between jumps, so checking the step ends is
     # enough to detect a jump (the default only from QuantumToolbox 0.49).
     jump_callback = ContinuousLindbladJumpCallback(interp_points = 0)
-    # Exact steps can be arbitrarily long. Stopping at each time of `tlist` keeps the
-    # jump-time search within one interval, and results are saved at step ends.
+    # Exact steps can span the whole time range. Stopping at the times of `tlist` does
+    # not change the results: it bounds the interval searched for each jump, so the
+    # search needs fewer evaluations, and the results are saved at step ends.
     tstops = sort!(unique!(vcat(collect(Float64, tlist), tstops)))
 
     H0, C0 = gauges[g0]
