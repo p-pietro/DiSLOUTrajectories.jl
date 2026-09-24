@@ -1,13 +1,3 @@
-"""
-    DiSLOUTrajectories
-
-Diagonal, Switching, and Locally Optimal Unraveling (DiSLOU) of time-independent
-Lindblad models, built on QuantumToolbox's `mcsolve`.
-
-[`dislou_solve`](@ref) runs `mcsolve` with the exact propagator
-[`GaugeEigenExponential`](@ref) and a callback that switches gauge after each
-jump. [`discover_gauges`](@ref) finds suitable gauges.
-"""
 module DiSLOUTrajectories
 
 using LinearAlgebra
@@ -21,7 +11,6 @@ import OrdinaryDiffEqCore
 import SciMLOperators: cache_operator
 
 export dislou_solve, discover_gauges, GaugeEigenExponential
-export about, cite, versioninfo
 
 include("info.jl")
 include("gauges.jl")
