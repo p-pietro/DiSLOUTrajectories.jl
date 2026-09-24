@@ -107,7 +107,7 @@ function versioninfo(io::IO = stdout)
 
     println(io, "\nExecution")
     println(io, "  ", rpad("Julia threads:", 20), Threads.nthreads())
-    println(io, "  ", rpad("Distributed workers:", 20), nworkers())
+    println(io, "  ", rpad("Distributed workers:", 20), Distributed.nworkers())
     println(io, "  ", rpad("BLAS:", 20), _report_blas_library(), ", ", LinearAlgebra.BLAS.get_num_threads(), " threads")
 
     println(io, "\nOptional features")
