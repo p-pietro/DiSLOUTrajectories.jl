@@ -97,4 +97,14 @@
         run(gauge_set) = cavity_solve(m, [0.0, 1.0]; gauge_set, ntraj = 4, rng = Xoshiro(1))
         @test run(found).col_times == run(found.shifts).col_times
     end
+
+    # The solver keeps the array types of the model, here its single precision.
+    @testset "single precision is kept" begin
+        m = driven_cavity(N = 10)
+        f32(A) = QuantumObject(ComplexF32.(A.data); type = A.type, dims = A.dimensions)
+        m32 = (; m..., H = f32(m.H), ψ0 = f32(m.ψ0), c_ops = f32.(m.c_ops))
+        sol = cavity_solve(m32, [0.0, 1.0]; gauge_set = m.steady_gauge, ntraj = 2, rng = Xoshiro(1))
+        @test eltype(first(sol.alg.bases).V) == ComplexF32
+        @test eltype(first(sol.states).data) == ComplexF32
+    end
 end

@@ -113,7 +113,8 @@ function dislou_solve(
     alg = GaugeEigenExponential(gauges; layer3_sizes)
 
     # Initial gauge (paper Eq. 12) and, with Layer III, projection of the initial state.
-    ψ = Vector{ComplexF64}(ψ0.data)
+    # The state has the array type and precision of the eigenbases.
+    ψ = eltype(first(alg.bases).λ).(to_dense(ψ0.data))
     C = [op.data for op in c_ops]
     g0 = argmin(_gauge_activities(C, shifts, ψ, similar(ψ)))
     reduced0 = !isempty(alg.reduced_bases) &&

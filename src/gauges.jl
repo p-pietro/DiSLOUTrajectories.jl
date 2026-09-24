@@ -19,9 +19,11 @@ function _gauge_shifts(gauge_set, nchannels::Int)
 end
 
 # Paper Eq. (9): C_μ^(g) = C_μ + ζ_μ and H^(g) = H + (i/2) Σ_μ (ζ_μ C_μ† - ζ_μ* C_μ).
-# The shifted operators generate the same Lindblad equation as (H, c_ops).
+# The shifted operators generate the same Lindblad equation as (H, c_ops), with
+# the array types and precision of H.
 function _shifted_operators(H, c_ops, ζ)
-    Hg = H + (im / 2) * sum(ζ[μ] * c_ops[μ]' - conj(ζ[μ]) * c_ops[μ] for μ in eachindex(c_ops))
+    ζ = convert(Vector{complex(eltype(H.data))}, ζ)
+    Hg = H + im * sum(ζ[μ] * c_ops[μ]' - conj(ζ[μ]) * c_ops[μ] for μ in eachindex(c_ops)) / 2
     Cg = [c_ops[μ] + ζ[μ] * qeye_like(c_ops[μ]) for μ in eachindex(c_ops)]
     return Hg, Cg
 end
