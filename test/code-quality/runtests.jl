@@ -66,7 +66,7 @@ include("../reporting/check.jl")
     @testset "every package test file runs somewhere" begin
         extended = Set(
             [
-                "test_cuda_extension.jl",
+                "test_gpu.jl",
                 "test_distributed.jl",
                 "test_semiclassical.jl",
             ]

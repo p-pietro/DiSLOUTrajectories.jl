@@ -21,9 +21,9 @@ import OrdinaryDiffEqCore
 import SciMLOperators: cache_operator
 
 export dislou_solve, discover_gauges, GaugeEigenExponential
-export about, backend_info, cite, versioninfo
+export about, cite, versioninfo
 
-include("backend.jl")
+include("info.jl")
 include("gauges.jl")
 include("eigen_exponential.jl")
 include("gauge_router.jl")

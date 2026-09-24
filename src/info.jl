@@ -1,52 +1,4 @@
-const _CUDA_DIAGONALIZATION_ENABLED = Ref(false)
-
-function _cuda_eigen end
-
-_enable_cuda_diagonalization!() = (_CUDA_DIAGONALIZATION_ENABLED[] = true; nothing)
-_disable_cuda_diagonalization!() = (_CUDA_DIAGONALIZATION_ENABLED[] = false; nothing)
-
-"""
-    backend_info()
-
-Inspect the backends available to diagonalize the effective Hamiltonians.
-
-# Notes
-
-- Loading CUDACore and cuSOLVER (or all of CUDA) activates DiSLOUTrajectories.jl's
-  optional CUDA extension. GPU diagonalization is enabled when `CUDACore.functional()`
-  succeeds during extension initialization.
-- CUDA accelerates the diagonalization, but trajectory propagation and returned
-  arrays remain on the CPU. A failed GPU diagonalization disables CUDA in the
-  current process and retries with LAPACK.
-
-# Returns
-
-- `info::NamedTuple`: `(; cpu, cuda_extension_loaded, cuda_enabled)`, where
-  `cpu` is always `:lapack`, `cuda_extension_loaded::Bool` reports whether
-  `DiSLOUTrajectoriesCUDAExt` is loaded, and `cuda_enabled::Bool` reports whether CUDA
-  diagonalization is currently enabled.
-
-See also [`dislou_solve`](@ref).
-
-# Examples
-
-```jldoctest
-julia> using DiSLOUTrajectories
-
-julia> backend_info().cpu
-:lapack
-```
-"""
-function backend_info()
-    return (;
-        cpu = :lapack,
-        cuda_extension_loaded = Base.get_extension(DiSLOUTrajectories, :DiSLOUTrajectoriesCUDAExt) !== nothing,
-        cuda_enabled = _CUDA_DIAGONALIZATION_ENABLED[],
-    )
-end
-
 const _REPORT_EXTENSIONS = (
-    (:DiSLOUTrajectoriesCUDAExt, :CUDACore, :cuSOLVER),
     (:DiSLOUTrajectoriesClusteringExt, :Clustering, :Distances),
     (:DiSLOUTrajectoriesQuantumCumulantsExt, :QuantumCumulants, :ModelingToolkitBase),
 )
@@ -90,7 +42,6 @@ Print DiSLOUTrajectories.jl's version, runtime environment, optional-extension s
 citation reminder to `io`.
 """
 function versioninfo(io::IO = stdout)
-    backend = backend_info()
     println(io, "DiSLOUTrajectories.jl — v", Base.pkgversion(DiSLOUTrajectories))
     println(io, "Diagonal, Switching, and Locally Optimal Unraveling")
     println(io, "Pietro Pacchioni and Fabrizio Minganti · BSD-3-Clause license")
@@ -111,13 +62,9 @@ function versioninfo(io::IO = stdout)
     println(io, "  ", rpad("BLAS:", 20), _report_blas_library(), ", ", LinearAlgebra.BLAS.get_num_threads(), " threads")
 
     println(io, "\nOptional features")
-    println(io, "  ", rpad("CUDA extension:", 28), backend.cuda_extension_loaded ? "loaded" : "not loaded")
-    println(io, "  ", rpad("CUDA diagonalization:", 28), backend.cuda_enabled ? "enabled" : "disabled")
     println(io, "  ", rpad("Clustering extension:", 28), _report_extension_loaded(:DiSLOUTrajectoriesClusteringExt) ? "loaded" : "not loaded")
     println(io, "  ", rpad("Semiclassical extension:", 28), _report_extension_loaded(:DiSLOUTrajectoriesQuantumCumulantsExt) ? "loaded" : "not loaded")
 
-    println(io, "\nCPU diagonalization backend: ", uppercase(string(backend.cpu)))
-    println(io, "Trajectory propagation runs on the CPU.")
     println(io, "\nDocumentation: https://p-pietro.github.io/DiSLOUTrajectories.jl/")
     println(io, "Repository:    https://github.com/p-pietro/DiSLOUTrajectories.jl")
     println(io, "Citation:      run cite() for BibTeX.")

@@ -62,5 +62,4 @@ discover_gauges
 DiSLOUTrajectories.versioninfo
 DiSLOUTrajectories.about
 DiSLOUTrajectories.cite
-backend_info
 ```

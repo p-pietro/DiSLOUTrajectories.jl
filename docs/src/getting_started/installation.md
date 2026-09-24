@@ -50,24 +50,20 @@ using QuantumCumulants
 QuantumCumulants 0.7 currently requires QuantumToolbox 0.47, so installing it
 selects that version.
 
-[```CUDA.jl```](https://cuda.juliagpu.org/stable/) can be installed to perform the initial eigendecomposition and related numerical operations on NVidia GPUs.
-The extension only needs the `CUDACore` and `cuSOLVER` components of CUDA.jl:
+## GPUs
+
+`dislou_solve` keeps the array types of its inputs, so GPUs need no extension. With
+[```CUDA.jl```](https://cuda.juliagpu.org/stable/), for example, QuantumToolbox's `cu`
+moves the operators and the initial state to the GPU:
 
 ```julia
-using Pkg
-Pkg.add(["CUDACore", "cuSOLVER"])
-using CUDACore, cuSOLVER
-using DiSLOUTrajectories
+using CUDA
+sol = dislou_solve(cu(H), cu(ψ0), tlist, cu.(c_ops); gauge_set)
 ```
 
-Loading the full `CUDA` package works too.
-
-When CUDA is functional, the extension diagonalizes the effective Hamiltonian of
-each gauge on the GPU and copies the eigensystem to the CPU. Trajectory
-propagation and returned arrays remain on the CPU. If the GPU diagonalization
-fails, DiSLOUTrajectories.jl warns once, disables further GPU attempts in the
-process and retries with CPU LAPACK.
-
-Check extension state with `DiSLOUTrajectories.backend_info()`.
+The eigendecomposition of each gauge and the propagation of the trajectories then
+run on the GPU. This relies on the dense linear algebra of the GPU package (`eigen`,
+`qr` and triangular solves) and on GPU support in QuantumToolbox's `mcsolve`. It is
+not tested in CI, which has no GPU.
 
 Continue with the [quick start](quickstart.md).
