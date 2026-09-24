@@ -64,7 +64,7 @@
         points = ComplexF64[
         1.0 + 1.0im 1.04 + 0.98im 0.97 + 1.02im -1.0 - 1.0im -0.98 - 1.04im -1.03 - 0.97im 5.0 + 5.0im
         ]
-        clusters = SM._cluster_terminal_means(
+        clusters = ClusteringExt._cluster_terminal_means(
             points; cluster_scales = [0.2], dbscan_radius = 0.5, min_neighbors = 2, min_weight = 0.0
         )
         @test clusters.counts == [3, 3]
@@ -76,13 +76,13 @@
     @testset "input errors" begin
         @test_throws ArgumentError discover_gauges(H, c_ops; kw..., nseeds = 0)
         @test_throws DimensionMismatch discover_gauges(H, c_ops; kw..., mode_dims = [d + 1])
-        @test_throws ArgumentError discover_gauges(H, c_ops; kw..., method = :unknown)
+        @test_throws MethodError discover_gauges(H, c_ops; kw..., method = :unknown)
         error = try
             discover_gauges(identity, sin; method = :semiclassical)
         catch err
             err
         end
-        @test error isa ArgumentError
-        @test occursin("QuantumCumulants", sprint(showerror, error))
+        @test error isa MethodError
+        @test occursin("using QuantumCumulants", sprint(showerror, error))
     end
 end

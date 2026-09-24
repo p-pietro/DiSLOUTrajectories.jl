@@ -17,7 +17,8 @@ end
     project = Base.active_project()
     workers_added = addprocs(2; exeflags = `--project=$project --startup-file=no`)
     try
-        @everywhere using DiSLOUTrajectories, QuantumToolbox, Clustering
+        # The workers do not load Clustering: the preliminary runs of discovery do not need it.
+        @everywhere using DiSLOUTrajectories, QuantumToolbox
         p = DrivenKerrParams(N = 20)
         kerr = driven_kerr_model(p)
         shifts = -sqrt(kerr.κ) * ComplexF64[kerr.αlow kerr.αhigh]
@@ -39,7 +40,14 @@ end
             nseeds = 8, dbscan_radius = 2.0, min_neighbors = 1, min_weight = 0.0,
             rng = Xoshiro(2), ensemblealg
         )
-        @test discover(EnsembleDistributed()).shifts == discover(EnsembleSerial()).shifts
+        distributed_gauges = discover(EnsembleDistributed())
+        serial_gauges = discover(EnsembleSerial())
+        @test distributed_gauges.shifts == serial_gauges.shifts
+        @test distributed_gauges.diagnostics.terminal_means == serial_gauges.diagnostics.terminal_means
+        @test !any(
+            remotecall_fetch(() -> Base.get_extension(DiSLOUTrajectories, :DiSLOUTrajectoriesClusteringExt) !== nothing, w)
+                for w in workers_added
+        )
     finally
         rmprocs(workers_added)
     end

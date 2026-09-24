@@ -12,7 +12,6 @@ module DiSLOUTrajectories
 
 using LinearAlgebra
 using Random
-using Statistics
 import Distributed
 using QuantumToolbox
 import SciMLBase
