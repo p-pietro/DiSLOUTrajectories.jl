@@ -12,9 +12,9 @@ Inspect the backends available to diagonalize the effective Hamiltonians.
 
 # Notes
 
-- Loading CUDA activates DiSLOUTrajectories.jl's optional CUDA extension. GPU
-  diagonalization is enabled when `CUDA.functional()` succeeds during extension
-  initialization.
+- Loading CUDACore and cuSOLVER (or all of CUDA) activates DiSLOUTrajectories.jl's
+  optional CUDA extension. GPU diagonalization is enabled when `CUDACore.functional()`
+  succeeds during extension initialization.
 - CUDA accelerates the diagonalization, but trajectory propagation and returned
   arrays remain on the CPU. A failed GPU diagonalization disables CUDA in the
   current process and retries with LAPACK.

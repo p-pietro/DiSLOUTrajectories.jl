@@ -50,7 +50,8 @@ using QuantumCumulants
 QuantumCumulants 0.7 currently requires QuantumToolbox 0.47, so installing it
 selects that version.
 
-[```CUDA.jl```](https://cuda.juliagpu.org/stable/) can be installed to perform the initial eigendecomposition and related numerical operations on NVidia GPUs:
+[```CUDA.jl```](https://cuda.juliagpu.org/stable/) can be installed to perform the initial eigendecomposition and related numerical operations on NVidia GPUs.
+The extension only needs the `CUDACore` and `cuSOLVER` components of CUDA.jl:
 
 ```julia
 using Pkg
@@ -58,6 +59,8 @@ Pkg.add(["CUDACore", "cuSOLVER"])
 using CUDACore, cuSOLVER
 using DiSLOUTrajectories
 ```
+
+Loading the full `CUDA` package works too.
 
 When CUDA is functional, the extension diagonalizes the effective Hamiltonian of
 each gauge on the GPU and copies the eigensystem to the CPU. Trajectory
