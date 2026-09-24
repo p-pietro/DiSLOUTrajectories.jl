@@ -45,7 +45,8 @@ include("../reporting/check.jl")
         undocumented = sort!(
             String[
                 string(name) for name in names(DiSLOUTrajectories; all = false, imported = false)
-                    if !haskey(Docs.meta(DiSLOUTrajectories), Docs.Binding(DiSLOUTrajectories, name))
+                    if name != :DiSLOUTrajectories &&   # the module, which has no docstring
+                    !haskey(Docs.meta(DiSLOUTrajectories), Docs.Binding(DiSLOUTrajectories, name))
             ]
         )
         @test isempty(undocumented)

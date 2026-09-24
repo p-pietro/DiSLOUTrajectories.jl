@@ -21,7 +21,10 @@
 end
 
 @testset "package information" begin
-    @test occursin("DiSLOUTrajectories.jl", sprint(DiSLOUTrajectories.versioninfo))
-    @test sprint(about) == sprint(DiSLOUTrajectories.versioninfo)
-    @test occursin("@article", sprint(cite))
+    info = sprint(SM.versioninfo)
+    @test occursin("DiSLOUTrajectories   Ver. $(pkgversion(SM))", info)
+    @test occursin("Clustering", info)   # loaded extension
+    @test occursin("QuantumToolbox.jl", info)
+    @test sprint(SM.about) == info
+    @test occursin("@article", sprint(SM.cite))
 end
