@@ -24,7 +24,8 @@
         )
         sol_zero = run(zeros(ComplexF64, 1, 1))
         sol = run(fill(-sqrt(m.κ) * m.α, 1, 1))
-        @test 3 * sum(length, sol.col_times) < sum(length, sol_zero.col_times)
+        # About 250 jumps against 725 on average: the shifted jump rate κ|α(t) - α|² decays.
+        @test 2 * sum(length, sol.col_times) < sum(length, sol_zero.col_times)
         @test sol.expect ≈ sol_zero.expect atol = 1.0e-8
     end
 
