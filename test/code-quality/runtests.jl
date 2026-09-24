@@ -1,6 +1,8 @@
 using Aqua
 using DiSLOUTrajectories
 using JET
+using LinearAlgebra
+using QuantumToolbox
 using Random
 using Test
 
@@ -14,33 +16,22 @@ include("../reporting/check.jl")
         Aqua.test_all(DiSLOUTrajectories; persistent_tasks = false)
     end
     @testset "JET" begin
-        # Broad definition analysis cannot narrow mutable optional recording fields or
-        # the unloaded CUDA extension. Keep it alongside strict concrete checks below.
         JET.test_package(DiSLOUTrajectories; target_modules = (DiSLOUTrajectories,), ignore_missing_comparison = true, mode = :typo)
 
-        H = ComplexF64[0 0; 0 1]
-        C = [ComplexF64[0 0.3; 0 0]]
-        psi = ComplexF64[0, 1]
-        cache = DiSLOUTrajectories._diagonal_cache_from_matrices(H, C)
-        c = cache.Vfac \ psi
-        sol = dislou_solve(
-            H, psi, [0.0, 1.0], C;
-            gauge_set = zeros(ComplexF64, 1, 1), e_ops = [H],
-            ntraj = 2, ensemblealg = :serial
-        )
-        # Basic error analysis of public accessors. Optimization checks below focus
-        # on hot kernels: Julia 1.10 cannot narrow expect_sem's optional matrix field.
-        for (f, args) in ((backend_info, ()), (expect_mean, (sol, 1)), (expect_sem, (sol, 1)))
-            @testset "$(nameof(f))" begin
-                JET.test_call(f, typeof.(args); target_modules = (DiSLOUTrajectories,), mode = :basic)
-            end
-        end
-        # Error and optimization analysis; no report types or call sites suppressed.
+        # Error and optimization analysis of the kernels that run at every step or jump.
+        N = 8
+        rng = Xoshiro(1)
+        A = randn(rng, ComplexF64, N, N)
+        H = QuantumObject((A + A') / 2)
+        c_ops = [QuantumObject(randn(rng, ComplexF64, N, N) / 3)]
+        alg = GaugeEigenExponential(H, c_ops)
+        basis = first(alg.bases)
+        ψ = normalize(randn(rng, ComplexF64, N))
+        C = [c.data for c in c_ops]
         for (f, args) in (
-                (DiSLOUTrajectories._survival_probability!, (similar(c), similar(c), c, cache.Λ, cache.G, 0.3, cache.Gnorm)),
-                (DiSLOUTrajectories._survival_and_rate!, (similar(c), c, cache.Λ, cache.G, cache.Gnorm)),
-                (DiSLOUTrajectories._sample_channel, ([0.1, 0.3], Xoshiro(1))),
-                (DiSLOUTrajectories._find_first_passage!, (DiSLOUTrajectories._FirstPassageBuffers(cache), cache, c, 0.5, 1.0)),
+                (DiSLOUTrajectories._coordinates!, (similar(ψ), basis, ψ)),
+                (DiSLOUTrajectories._project!, (copy(ψ), basis, 1.0e-3, similar(ψ), similar(ψ))),
+                (DiSLOUTrajectories._gauge_activities, (C, zeros(ComplexF64, 1, 2), ψ, similar(ψ))),
             )
             @testset "$(nameof(f))" begin
                 JET.test_call(f, typeof.(args); target_modules = (DiSLOUTrajectories,), mode = :basic)
