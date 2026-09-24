@@ -5,9 +5,8 @@ using QuantumCumulants
 @testset "extension activation needs only QuantumCumulants" begin
     @test Base.get_extension(DiSLOUTrajectories, :DiSLOUTrajectoriesQuantumCumulantsExt) !== nothing
     @test !isdefined(Main, :ModelingToolkitBase)
-    err = thrown(() -> discover_gauges(nothing, []; method = :semiclassical))
-    @test err isa MethodError
-    @test !occursin("using QuantumCumulants", sprint(showerror, err))
+    # The call reaches the extension, which requires `limits`, and not the fallback.
+    @test_throws UndefKeywordError discover_gauges(nothing, []; method = :semiclassical)
 end
 
 include("fixtures/two_mode_diamond.jl")

@@ -19,6 +19,4 @@ include("gauge_router.jl")
 include("solve.jl")
 include("gauge_discovery.jl")
 
-__init__() = Base.Experimental.register_error_hint(_discovery_error_hint, MethodError)
-
 end # module

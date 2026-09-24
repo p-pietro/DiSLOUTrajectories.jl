@@ -171,7 +171,7 @@ _point_matrix(points, nmodes) = isempty(points) ? zeros(ComplexF64, nmodes, 0) :
 
 # Paper: ζ_μ^(g) = -C_{μ,sc}(α^(g), α^(g)*) (Eq. A.6).
 function DiSLOUTrajectories._discover_gauges(
-        ::Val{:semiclassical}, hamiltonian::Function, collapse_operators::Function;
+        ::Val{:semiclassical}, hamiltonian, collapse_operators;
         limits, parameters = ()
     )
     bounds = _semiclassical_limits(limits)
