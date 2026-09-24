@@ -12,7 +12,7 @@ quantum trajectories and requires `Clustering.jl`. Otherwise, you can provide sy
 constructors for the Hamiltonian and collapse operators, select `method=:semiclassical` and load `QuantumCumulants.jl` to find
 stable mean-field fixed points. Install these optional packages before loading them.
 
-See also [`dislou_solve`](@ref), [`DiSLOUSolution`](@ref).
+See also [`dislou_solve`](@ref).
 
 # Examples
 
