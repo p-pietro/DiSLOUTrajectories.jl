@@ -100,7 +100,7 @@ c_ops = collapse_operators(a, b)
 
 ## Semiclassical gauges
 
-The symbolic mean-field equations have five fixed points: three stable centers ``(\alpha_g,\beta_g)`` defining ``\zeta_\mu^{(g)}`` through Eq. (A.6) and two unstable saddles.
+The symbolic mean-field equations have five fixed points: three stable centers ``(\alpha_g,\beta_g)`` defining ``\zeta_\mu^{(g)}`` through Eq. (A.5) and two unstable saddles.
 
 ```julia
 semiclassical_limits = (full_dims[1] - 1, full_dims[2] - 1)

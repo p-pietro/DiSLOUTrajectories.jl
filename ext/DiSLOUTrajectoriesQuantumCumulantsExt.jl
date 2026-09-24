@@ -92,7 +92,7 @@ function _semiclassical_residual(drift, z::AbstractVector{<:Real})
     return collect(Iterators.flatten((real(value), imag(value)) for value in values))
 end
 
-# Paper: x^(g) with R(x^(g)) = 0 (Eqs. A.3–A.4), J = ∂R/∂x by forward-mode AD.
+# Paper: x^(g) with R(x^(g)) = 0 (Eqs. A.2–A.3), J = ∂R/∂x by forward-mode AD.
 function _semiclassical_root(residual, seed::Vector{Float64})
     policy = _SEMICLASSICAL_NUMERICAL_POLICY
     problem = SNS.NonlinearProblem((z, _) -> residual(z), seed)
@@ -103,7 +103,7 @@ function _semiclassical_root(residual, seed::Vector{Float64})
     return norm(residual(solution.u)) <= policy.residual_tolerance ? solution.u : nothing
 end
 
-# Paper: α^(g) and max_ℓ Re λ_ℓ[J(x^(g))] (Eq. A.5).
+# Paper: α^(g) and max_ℓ Re λ_ℓ[J(x^(g))] (Eq. A.4).
 function _semiclassical_point(residual, z::Vector{Float64})
     value = residual(z)
     jacobian = ForwardDiff.jacobian(residual, z)
@@ -169,7 +169,7 @@ end
 _point_matrix(points, nmodes) = isempty(points) ? zeros(ComplexF64, nmodes, 0) :
     hcat((point.amplitudes for point in points)...)
 
-# Paper: ζ_μ^(g) = -C_{μ,sc}(α^(g), α^(g)*) (Eq. A.6).
+# Paper: ζ_μ^(g) = -C_{μ,sc}(α^(g), α^(g)*) (Eq. A.5).
 function DiSLOUTrajectories._discover_gauges(
         ::Val{:semiclassical}, hamiltonian, collapse_operators;
         limits, parameters = ()
