@@ -1,6 +1,6 @@
 const _CUDA_DIAGONALIZATION_ENABLED = Ref(false)
 
-function _cuda_prepare_diagonal_data end
+function _cuda_eigen end
 
 _enable_cuda_diagonalization!() = (_CUDA_DIAGONALIZATION_ENABLED[] = true; nothing)
 _disable_cuda_diagonalization!() = (_CUDA_DIAGONALIZATION_ENABLED[] = false; nothing)
@@ -8,25 +8,25 @@ _disable_cuda_diagonalization!() = (_CUDA_DIAGONALIZATION_ENABLED[] = false; not
 """
     backend_info()
 
-Inspect the eigensystem preparation backends available to the current process.
+Inspect the backends available to diagonalize the effective Hamiltonians.
 
 # Notes
 
-- Loading CUDACore and cuSOLVER (or all of CUDA) activates DiSLOUTrajectories.jl's
-  optional CUDA extension. GPU preparation is enabled when `CUDACore.functional()`
-  succeeds during extension initialization.
-- CUDA accelerates eigensystem preparation, but trajectory propagation and returned
-  arrays remain on the CPU. GPU preparation failures disable CUDA preparation
-  in the current process and retry with LAPACK.
+- Loading CUDA activates DiSLOUTrajectories.jl's optional CUDA extension. GPU
+  diagonalization is enabled when `CUDA.functional()` succeeds during extension
+  initialization.
+- CUDA accelerates the diagonalization, but trajectory propagation and returned
+  arrays remain on the CPU. A failed GPU diagonalization disables CUDA in the
+  current process and retries with LAPACK.
 
 # Returns
 
 - `info::NamedTuple`: `(; cpu, cuda_extension_loaded, cuda_enabled)`, where
   `cpu` is always `:lapack`, `cuda_extension_loaded::Bool` reports whether
   `DiSLOUTrajectoriesCUDAExt` is loaded, and `cuda_enabled::Bool` reports whether CUDA
-  preparation is currently enabled.
+  diagonalization is currently enabled.
 
-See also [`dislou_solve`](@ref), [`DiSLOUSolution`](@ref).
+See also [`dislou_solve`](@ref).
 
 # Examples
 
@@ -112,11 +112,11 @@ function versioninfo(io::IO = stdout)
 
     println(io, "\nOptional features")
     println(io, "  ", rpad("CUDA extension:", 28), backend.cuda_extension_loaded ? "loaded" : "not loaded")
-    println(io, "  ", rpad("CUDA preparation:", 28), backend.cuda_enabled ? "enabled" : "disabled")
+    println(io, "  ", rpad("CUDA diagonalization:", 28), backend.cuda_enabled ? "enabled" : "disabled")
     println(io, "  ", rpad("Clustering extension:", 28), _report_extension_loaded(:DiSLOUTrajectoriesClusteringExt) ? "loaded" : "not loaded")
     println(io, "  ", rpad("Semiclassical extension:", 28), _report_extension_loaded(:DiSLOUTrajectoriesQuantumCumulantsExt) ? "loaded" : "not loaded")
 
-    println(io, "\nCPU preparation backend: ", uppercase(string(backend.cpu)))
+    println(io, "\nCPU diagonalization backend: ", uppercase(string(backend.cpu)))
     println(io, "Trajectory propagation runs on the CPU.")
     println(io, "\nDocumentation: https://p-pietro.github.io/DiSLOUTrajectories.jl/")
     println(io, "Repository:    https://github.com/p-pietro/DiSLOUTrajectories.jl")
@@ -141,19 +141,17 @@ function cite(io::IO = stdout)
     return nothing
 end
 
-# Paper: V, Λ, G, γ_j, and V†OV (Eqs. 15–17, Section 3.3.1).
-function _prepare_diagonal_cache_data(
-        H::Matrix{ComplexF64},
-        C::Vector{Matrix{ComplexF64}}, Z::Vector{Matrix{ComplexF64}}
-    )
+# Eigenvalues and eigenvectors of H_eff, on the GPU when the CUDA extension is enabled.
+function _eigen_decomposition(Heff::Matrix{ComplexF64})
     if _CUDA_DIAGONALIZATION_ENABLED[]
         try
-            return _cuda_prepare_diagonal_data(H, C, Z)
+            return _cuda_eigen(Heff)
         catch err
             err isa InterruptException && rethrow()
             _disable_cuda_diagonalization!()
-            @warn "CUDA preparation failed; disabling CUDA and retrying with LAPACK" exception = (err, catch_backtrace()) maxlog = 1
+            @warn "CUDA diagonalization failed; disabling CUDA and retrying with LAPACK" exception = (err, catch_backtrace()) maxlog = 1
         end
     end
-    return _cpu_prepare_diagonal_data(H, C, Z)
+    F = eigen(Heff)
+    return F.values, F.vectors
 end
