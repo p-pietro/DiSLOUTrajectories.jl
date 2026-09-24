@@ -61,28 +61,25 @@
     end
 
     @testset "DBSCAN clustering" begin
+        # Two clusters of three core points and one boundary point each, and an outlier.
         points = ComplexF64[
-        1.0 + 1.0im 1.04 + 0.98im 0.97 + 1.02im -1.0 - 1.0im -0.98 - 1.04im -1.03 - 0.97im 5.0 + 5.0im
+        1.0 + 1.0im 1.04 + 0.98im 0.97 + 1.02im 1.12 + 1.0im -1.0 - 1.0im -0.98 - 1.04im -1.03 - 0.97im -0.9 - 1.06im 5.0 + 5.0im
         ]
         clusters = ClusteringExt._cluster_terminal_means(
-            points; cluster_scales = [0.2], dbscan_radius = 0.5, min_neighbors = 2, min_weight = 0.0
+            points; cluster_scales = [0.2], dbscan_radius = 0.5, min_neighbors = 3, min_weight = 0.0
         )
-        @test clusters.counts == [3, 3]
-        @test clusters.weights == [3 / 7, 3 / 7]
-        @test clusters.labels == [2, 2, 2, 1, 1, 1, 0]   # equal weights are ordered by center
-        @test clusters.centers ≈ ComplexF64[(-3.01 - 3.01im) / 3 (3.01 + 3.0im) / 3]
+        @test clusters.counts == [4, 4]
+        @test clusters.weights == [4 / 9, 4 / 9]
+        @test clusters.labels == [2, 2, 2, 2, 1, 1, 1, 1, 0]   # equal weights are ordered by center
+        @test clusters.centers ≈ ComplexF64[(-3.91 - 4.07im) / 4 (4.13 + 4.0im) / 4]
     end
 
     @testset "input errors" begin
         @test_throws ArgumentError discover_gauges(H, c_ops; kw..., nseeds = 0)
         @test_throws DimensionMismatch discover_gauges(H, c_ops; kw..., mode_dims = [d + 1])
-        @test_throws MethodError discover_gauges(H, c_ops; kw..., method = :unknown)
-        error = try
-            discover_gauges(identity, sin; method = :semiclassical)
-        catch err
-            err
+        for (method, hint) in (:unknown => "Unsupported gauge discovery method", :semiclassical => "using QuantumCumulants")
+            err = thrown(() -> discover_gauges(H, c_ops; kw..., method))
+            @test err isa MethodError && occursin(hint, sprint(showerror, err))
         end
-        @test error isa MethodError
-        @test occursin("using QuantumCumulants", sprint(showerror, error))
     end
 end

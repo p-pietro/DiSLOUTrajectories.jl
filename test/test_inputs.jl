@@ -25,5 +25,6 @@ end
     @test keys(info) == (:cpu, :cuda_extension_loaded, :cuda_enabled)
     @test info.cpu === :lapack
     @test occursin("DiSLOUTrajectories.jl", sprint(DiSLOUTrajectories.versioninfo))
+    @test sprint(about) == sprint(DiSLOUTrajectories.versioninfo)
     @test occursin("@article", sprint(cite))
 end
