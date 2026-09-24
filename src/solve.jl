@@ -119,7 +119,8 @@ function dislou_solve(
     reduced0 = !isempty(alg.reduced_bases) &&
         _project!(ψ, alg.reduced_bases[g0], residual_tolerance, similar(ψ), similar(ψ))
 
-    # Jump operators of each gauge, built as QuantumToolbox builds those of `mcsolve`.
+    # Jump operators of each gauge, built as QuantumToolbox builds those of `mcsolve`
+    # (from version 0.47.2; earlier versions store plain matrices).
     jump_ops = [map(op -> get_data(cache_operator(QobjEvo(op), ψ)), Cg) for (_, Cg) in gauges]
     router = GaugeRouter(C, shifts, jump_ops, float(hysteresis), float(residual_tolerance), g0, reduced0)
     router_callback = _router_callback(router)
