@@ -140,18 +140,3 @@ function cite(io::IO = stdout)
     println(io, _CITATION_BIBTEX)
     return nothing
 end
-
-# Eigenvalues and eigenvectors of H_eff, on the GPU when the CUDA extension is enabled.
-function _eigen_decomposition(Heff::Matrix{ComplexF64})
-    if _CUDA_DIAGONALIZATION_ENABLED[]
-        try
-            return _cuda_eigen(Heff)
-        catch err
-            err isa InterruptException && rethrow()
-            _disable_cuda_diagonalization!()
-            @warn "CUDA diagonalization failed; disabling CUDA and retrying with LAPACK" exception = (err, catch_backtrace()) maxlog = 1
-        end
-    end
-    F = eigen(Heff)
-    return F.values, F.vectors
-end

@@ -5,16 +5,25 @@
 # Modes of the no-jump generator L = -i H_eff: eigenvalues `λ` and right
 # eigenvectors `V` (columns), either all of them (Layer II) or only the slowest
 # ones (Layer III). The factorization V = Q R gives the coordinates of a state.
-struct EigenBasis
-    λ::Vector{ComplexF64}
-    V::Matrix{ComplexF64}
-    Q::Matrix{ComplexF64}
-    R::UpperTriangular{ComplexF64, Matrix{ComplexF64}}
+# The arrays have the type of the model's arrays, for example GPU arrays.
+struct EigenBasis{T <: Number, VT <: AbstractVector{T}, MT <: AbstractMatrix{T}}
+    λ::VT
+    V::MT
+    Q::MT
+    R::UpperTriangular{T, MT}
 end
 
 function EigenBasis(λ::AbstractVector, V::AbstractMatrix)
     F = qr(V)
-    return EigenBasis(λ, V, Matrix(F.Q), UpperTriangular(Matrix(F.R)))
+    Q = lmul!(F.Q, _identity_like(V))   # the Q factor, with the array type of V
+    return EigenBasis(λ, V, Q, UpperTriangular(F.R))
+end
+
+# Identity matrix with the size and array type of `A`.
+function _identity_like(A::AbstractMatrix)
+    id = fill!(similar(A), 0)
+    view(id, diagind(id)) .= 1
+    return id
 end
 
 Base.length(basis::EigenBasis) = length(basis.λ)
@@ -22,27 +31,31 @@ Base.length(basis::EigenBasis) = length(basis.λ)
 # Coordinates c with V c = ψ (the least-squares fit if ψ is outside the span of V).
 _coordinates!(c, basis::EigenBasis, ψ) = ldiv!(basis.R, mul!(c, basis.Q', ψ))
 
-_effective_hamiltonian(H, c_ops) = H - (im / 2) * sum(C' * C for C in c_ops)
+_effective_hamiltonian(H, c_ops) = H - im * sum(C' * C for C in c_ops) / 2
 
-# All the modes of H_eff (paper Eqs. 15–16).
-function _full_basis(Heff)
-    E, V = _eigen_decomposition(Matrix{ComplexF64}(Heff))
-    basis = EigenBasis(-im .* E, V)
-    κ = cond(basis.R, 1)
-    κ < 1.0e8 || @warn "The eigenvectors of the effective Hamiltonian are ill-conditioned \
+# All the modes of H_eff (paper Eqs. 15–16). `eigen` runs where the data of H_eff
+# lives, for example on the GPU.
+function _full_basis(Heff::AbstractMatrix)
+    F = eigen(to_dense(Heff))
+    basis = EigenBasis(-im .* F.values, F.vectors)
+    # Warn when half of the digits are lost. The estimate runs on the CPU, where it is cheap.
+    κ = cond(UpperTriangular(collect(basis.R.data)), 1)
+    κ < 1 / sqrt(eps(real(eltype(basis.λ)))) || @warn "The eigenvectors of the effective Hamiltonian are ill-conditioned \
         (condition number ≈ $(round(κ; sigdigits = 2))), so the propagation loses accuracy." maxlog = 1
     return basis
 end
 
 # Layer III (paper Eq. 20): the `m` slowest modes, plus any mode degenerate with them.
+# The modes are selected on the CPU, then taken from the arrays of `full`.
 function _slow_basis(full::EigenBasis, m::Integer)
     1 <= m <= length(full) || throw(ArgumentError("layer3_sizes must be in 1:$(length(full)), got $m"))
-    λ = full.λ
+    λ = collect(full.λ)
     order = sortperm(λ; by = x -> -real(x))   # slowest decay first
     slow = order[1:m]
-    degenerate = filter(j -> any(i -> isapprox(λ[j], λ[i]; rtol = sqrt(eps())), slow), order[(m + 1):end])
+    rtol = sqrt(eps(real(eltype(λ))))
+    degenerate = filter(j -> any(i -> isapprox(λ[j], λ[i]; rtol), slow), order[(m + 1):end])
     modes = sort!(vcat(slow, degenerate))
-    return EigenBasis(λ[modes], full.V[:, modes])
+    return EigenBasis(full.λ[modes], full.V[:, modes])
 end
 
 _layer3_sizes(m::Integer, ngauges) = fill(m, ngauges)
@@ -65,7 +78,9 @@ Hamiltonian `H` and collapse operators `c_ops`:
 
 The decomposition ``-i H_{\rm eff} = V \Lambda V^{-1}`` is computed once. Each step,
 and each evaluation of the dense output used to locate the jumps and to save
-results, is exact, so steps can be as long as the time between jumps.
+results, is exact, so steps can be as long as the time between jumps. The arrays
+follow those of `H` and `c_ops`: with GPU operators, for example, the decomposition
+and the propagation run on the GPU.
 
 Pass it to `mcsolve` together with the same `H` and `c_ops`. Stopping at the times of
 `tlist` keeps the search for each jump time within one interval:
@@ -81,9 +96,9 @@ bases of Layer III when requested. Each trajectory then switches basis after its
     The algorithm never evaluates the ODE function. It must be built from the same
     `H` and `c_ops` that are given to `mcsolve`.
 """
-struct GaugeEigenExponential <: OrdinaryDiffEqCore.OrdinaryDiffEqLinearExponentialAlgorithm
-    bases::Vector{EigenBasis}           # all modes, one basis per gauge (Layer II)
-    reduced_bases::Vector{EigenBasis}   # slowest modes, one basis per gauge (Layer III), or empty
+struct GaugeEigenExponential{B <: EigenBasis} <: OrdinaryDiffEqCore.OrdinaryDiffEqLinearExponentialAlgorithm
+    bases::Vector{B}           # all modes, one basis per gauge (Layer II)
+    reduced_bases::Vector{B}   # slowest modes, one basis per gauge (Layer III), or empty
 end
 
 GaugeEigenExponential(H::QuantumObject, c_ops) = GaugeEigenExponential([(H, c_ops)])
@@ -91,7 +106,7 @@ GaugeEigenExponential(H::QuantumObject, c_ops) = GaugeEigenExponential([(H, c_op
 # One basis per gauge `(H_g, C_g)`, and `layer3_sizes` slow modes per gauge for Layer III.
 function GaugeEigenExponential(gauges::AbstractVector; layer3_sizes = nothing)
     bases = [_full_basis(_effective_hamiltonian(Hg, Cg).data) for (Hg, Cg) in gauges]
-    reduced_bases = layer3_sizes === nothing ? EigenBasis[] :
+    reduced_bases = layer3_sizes === nothing ? empty(bases) :
         map(_slow_basis, bases, _layer3_sizes(layer3_sizes, length(bases)))
     return GaugeEigenExponential(bases, reduced_bases)
 end
@@ -104,7 +119,7 @@ end
 
 # Per-trajectory state. `gauge` and `reduced` select the active basis; the gauge
 # router changes them after jumps.
-OrdinaryDiffEqCore.@cache mutable struct GaugeEigenExponentialCache{uType} <: OrdinaryDiffEqCore.OrdinaryDiffEqMutableCache
+OrdinaryDiffEqCore.@cache mutable struct GaugeEigenExponentialCache{uType, B <: EigenBasis} <: OrdinaryDiffEqCore.OrdinaryDiffEqMutableCache
     u::uType
     uprev::uType
     tmp::uType        # scratch lent to callbacks (`get_tmp_cache`)
@@ -112,7 +127,7 @@ OrdinaryDiffEqCore.@cache mutable struct GaugeEigenExponentialCache{uType} <: Or
     c_next::uType     # coordinates of `u`, the end of the step
     c_scratch::uType
     ulast::uType      # `u` as this algorithm left it, to detect changes made by callbacks
-    basis::EigenBasis # basis of the current step
+    basis::B          # basis of the current step
     gauge::Int
     reduced::Bool     # whether the gauge uses its Layer III basis
 end
