@@ -14,10 +14,7 @@ if Sys.islinux() || Sys.iswindows()
 
             # The solver gives the same trajectories with GPU and CPU eigensystems.
             m = driven_cavity(N = 20)
-            run() = dislou_solve(
-                m.H, m.ψ0, 0:0.5:5, m.c_ops; gauge_set = zeros(ComplexF64, 1, 1),
-                e_ops = [m.a' * m.a], ntraj = 20, rng = Xoshiro(1), quiet...
-            )
+            run() = cavity_solve(m, 0:0.5:5; e_ops = [m.a' * m.a], ntraj = 20, rng = Xoshiro(1))
             on_gpu = run()
             DiSLOUTrajectories._disable_cuda_diagonalization!()
             try

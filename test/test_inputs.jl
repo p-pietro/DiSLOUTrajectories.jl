@@ -1,6 +1,6 @@
 @testset "input validation" begin
     m = driven_cavity(N = 5)
-    run(; kw...) = dislou_solve(m.H, m.ψ0, [0.0, 1.0], m.c_ops; gauge_set = zeros(ComplexF64, 1, 1), ntraj = 2, quiet..., kw...)
+    run(; kw...) = cavity_solve(m, [0.0, 1.0]; ntraj = 2, kw...)
 
     @test_throws UndefKeywordError dislou_solve(m.H, m.ψ0, [0.0, 1.0], m.c_ops)
     @test_throws DimensionMismatch run(gauge_set = zeros(ComplexF64, 2, 1))
