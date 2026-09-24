@@ -119,7 +119,7 @@ function dislou_solve(
     # The state has the array type and precision of the eigenbases.
     ψ = eltype(first(alg.bases).λ).(to_dense(ψ0.data))
     C = [op.data for op in c_ops]
-    g0 = argmin(_gauge_activities(C, shifts, ψ, similar(ψ)))
+    g0 = argmin(_gauge_activities!(zeros(size(shifts, 2)), C, shifts, ψ, similar(ψ)))
     reduced0 = !isempty(alg.reduced_bases) &&
         _project!(ψ, alg.reduced_bases[g0], residual_tolerance, similar(ψ), similar(ψ))
 

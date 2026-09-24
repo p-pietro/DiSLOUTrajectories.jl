@@ -140,6 +140,7 @@ OrdinaryDiffEqCore.@cache mutable struct GaugeEigenExponentialCache{uType, B <: 
     c_scratch::uType
     ulast::uType      # `u` as this algorithm left it, to detect changes made by callbacks
     basis::B          # basis of the current step
+    activities::Vector{Float64}   # activity of each gauge, computed by the router
     gauge::Int
     reduced::Bool     # whether the gauge uses its Layer III basis
 end
@@ -154,7 +155,7 @@ function OrdinaryDiffEqCore.alg_cache(
     ) where {uEltypeNoUnits, uBottomEltypeNoUnits, tTypeNoUnits}
     ulast = fill!(similar(u), NaN)   # matches no state, so the first step computes coordinates
     return GaugeEigenExponentialCache(
-        u, uprev, zero(u), zero(u), zero(u), zero(u), ulast, first(alg.bases), 1, false
+        u, uprev, zero(u), zero(u), zero(u), zero(u), ulast, first(alg.bases), zeros(length(alg.bases)), 1, false
     )
 end
 
