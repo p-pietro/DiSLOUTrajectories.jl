@@ -124,11 +124,15 @@ function dislou_solve(
     router_callback = _router_callback(router)
     callback = callback === nothing ? router_callback : CallbackSet(router_callback, callback)
 
-    # QuantumToolbox 0.49 fails when `e_ops = nothing` comes with an extra callback;
+    # QuantumToolbox's mcsolve fails when `e_ops = nothing` comes with an extra callback;
     # an empty list of observables gives the same result.
     e_ops = something(e_ops, typeof(H)[])
 
+    # The norm decreases monotonically between jumps, so checking the step ends is
+    # enough to detect a jump (the default only from QuantumToolbox 0.49).
+    jump_callback = ContinuousLindbladJumpCallback(interp_points = 0)
+
     H0, C0 = gauges[g0]
     ψ0 = QuantumObject(ψ; type = Ket(), dims = ψ0.dimensions)
-    return mcsolve(H0, ψ0, tlist, C0; alg, e_ops, callback, kwargs...)
+    return mcsolve(H0, ψ0, tlist, C0; alg, e_ops, callback, jump_callback, kwargs...)
 end
