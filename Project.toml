@@ -6,6 +6,7 @@ license = "BSD-3-Clause"
 repo = "https://github.com/p-pietro/DiSLOUTrajectories.jl"
 
 [deps]
+BracketingNonlinearSolve = "70df07ce-3d50-431d-a3e7-ca6ddb60ac1e"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 OrdinaryDiffEqCore = "bbf590c4-e513-4bbe-9b18-05decba2e5d8"
@@ -28,6 +29,7 @@ DiSLOUTrajectoriesClusteringExt = ["Clustering", "Distances", "Statistics"]
 DiSLOUTrajectoriesQuantumCumulantsExt = ["QuantumCumulants", "ModelingToolkitBase", "SimpleNonlinearSolve", "ForwardDiff"]
 
 [compat]
+BracketingNonlinearSolve = "1"
 Clustering = "0.15"
 Distances = "0.10"
 Distributed = "1.10"

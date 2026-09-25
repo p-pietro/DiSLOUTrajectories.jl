@@ -5,9 +5,10 @@ using Random
 import Distributed
 using QuantumToolbox
 import SciMLBase
-import SciMLBase: DiscreteCallback, CallbackSet, derivative_discontinuity!
+import SciMLBase: DiscreteCallback, CallbackSet, derivative_discontinuity!, add_tstop!, IntervalNonlinearProblem, solve
 import SciMLBase: EnsembleAlgorithm, EnsembleSerial, EnsembleThreads, EnsembleDistributed
 import OrdinaryDiffEqCore
+import BracketingNonlinearSolve: ModAB
 import SciMLOperators: cache_operator
 
 export dislou_solve, discover_gauges, GaugeEigenExponential

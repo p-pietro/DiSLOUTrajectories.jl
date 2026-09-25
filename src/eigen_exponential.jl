@@ -136,13 +136,15 @@ OrdinaryDiffEqCore.@cache mutable struct GaugeEigenExponentialCache{uType, B <: 
     uprev::uType
     tmp::uType        # scratch lent to callbacks (`get_tmp_cache`)
     c::uType          # coordinates of `uprev` in `basis`
-    c_next::uType     # coordinates of `u`, the end of the step
+    c_next::uType     # coordinates of `ulast` in `basis_next`
     c_scratch::uType
-    ulast::uType      # `u` as this algorithm left it, to detect changes made by callbacks
+    ulast::uType      # `u` as this algorithm or the router left it, to detect changes made by callbacks
     basis::B          # basis of the current step
+    basis_next::B
     activities::Vector{Float64}   # activity of each gauge, computed by the router
     gauge::Int
     reduced::Bool     # whether the gauge uses its Layer III basis
+    jump_time::Float64   # next jump, found by the router
 end
 
 _active_basis(alg::GaugeEigenExponential, cache) =
@@ -155,7 +157,8 @@ function OrdinaryDiffEqCore.alg_cache(
     ) where {uEltypeNoUnits, uBottomEltypeNoUnits, tTypeNoUnits}
     ulast = fill!(similar(u), NaN)   # matches no state, so the first step computes coordinates
     return GaugeEigenExponentialCache(
-        u, uprev, zero(u), zero(u), zero(u), zero(u), ulast, first(alg.bases), zeros(length(alg.bases)), 1, false
+        u, uprev, zero(u), zero(u), zero(u), zero(u), ulast, first(alg.bases), first(alg.bases),
+        zeros(length(alg.bases)), 1, false, Inf
     )
 end
 
@@ -175,14 +178,14 @@ function OrdinaryDiffEqCore.perform_step!(integrator, cache::GaugeEigenExponenti
     basis = _active_basis(integrator.alg, cache)
     c = view(cache.c, 1:length(basis))
     c_next = view(cache.c_next, 1:length(basis))
-    # The coordinates reached by the previous step are still valid, unless a
-    # callback changed the state (a jump) or the basis (a gauge switch).
-    if basis === cache.basis && uprev == cache.ulast
+    # The coordinates reached by the previous step, or given by the router after a
+    # jump, are still valid unless a callback changed the state or the basis since.
+    if basis === cache.basis_next && uprev == cache.ulast
         copyto!(c, c_next)
     else
         _coordinates!(c, basis, uprev)
-        cache.basis = basis
     end
+    cache.basis = cache.basis_next = basis
     @. c_next = exp(basis.λ * dt) * c
     mul!(u, basis.V, c_next)
     copyto!(cache.ulast, u)

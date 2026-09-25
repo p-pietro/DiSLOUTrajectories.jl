@@ -52,7 +52,8 @@ Hamiltonian without changing the master equation (Eq. 9):
 
 # Notes
 
-- `dislou_solve` sets the `alg` and `jump_callback` of `mcsolve` itself.
+- `dislou_solve` sets the `alg` and `jump_callback` of `mcsolve` itself. Extra
+  `callback`s must not change the state, since the jump times are found in advance.
 - Jump records (`col_times`, `col_which`) refer to the shifted operators of the gauge
   that was active at each jump.
 - Layers I and II are exact up to floating-point errors, which grow with the condition
@@ -101,7 +102,6 @@ function dislou_solve(
         residual_tolerance::Real = 1.0e-3,
         e_ops = nothing,
         callback = nothing,
-        tstops = Float64[],
         kwargs...,
     )
     isempty(c_ops) && throw(ArgumentError("dislou_solve needs at least one collapse operator"))
@@ -134,15 +134,10 @@ function dislou_solve(
     # an empty list of observables gives the same result.
     e_ops = something(e_ops, typeof(H)[])
 
-    # The norm decreases monotonically between jumps, so checking the step ends is
-    # enough to detect a jump (the default only from QuantumToolbox 0.49).
-    jump_callback = ContinuousLindbladJumpCallback(interp_points = 0)
-    # Exact steps can span the whole time range. Stopping at the times of `tlist` does
-    # not change the results: it bounds the interval searched for each jump, so the
-    # search needs fewer evaluations, and the results are saved at step ends.
-    tstops = sort!(unique!(vcat(collect(Float64, tlist), tstops)))
+    # The router finds the jump times and stops there (see `_schedule_jump!`).
+    jump_callback = DiscreteLindbladJumpCallback()
 
     H0, C0 = gauges[g0]
     ψ0 = QuantumObject(ψ; type = Ket(), dims = ψ0.dimensions)
-    return mcsolve(H0, ψ0, tlist, C0; alg, e_ops, callback, jump_callback, tstops, kwargs...)
+    return mcsolve(H0, ψ0, tlist, C0; alg, e_ops, callback, jump_callback, kwargs...)
 end
