@@ -142,3 +142,5 @@ Since this package is built on top of [`QuantumToolbox.jl`](https://qutip.org/Qu
   url = {https://doi.org/10.22331/q-2025-09-29-1866}
 }
 ```
+
+The package DiSLOUTrajectories.jl was originally developed by Alice & Bob and released under the BSD-3 license. This fork and its maintainers are not associated with or endorsed by the company.
