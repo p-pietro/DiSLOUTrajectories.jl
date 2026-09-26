@@ -1,190 +1,5 @@
-# Finite gauge inputs and exact generator-preserving shifts.
-
-struct _GaugeData
-    shifts::Matrix{ComplexF64}
-    method::Symbol
-    centers::Matrix{ComplexF64}
-    weights::Vector{Float64}
-    diagnostics::NamedTuple
-    status::Symbol
-end
-
-_copy_gauge_diagnostic(x::AbstractArray) = deepcopy(x)
-_copy_gauge_diagnostic(x::NamedTuple) = NamedTuple{propertynames(x)}(
-    Tuple(_copy_gauge_diagnostic(v) for v in values(x))
-)
-_copy_gauge_diagnostic(x) = x
-
-function _validated_gauge_data(gauge_set, Nc::Int)::_GaugeData
-    Nc >= 0 || throw(ArgumentError("number of collapse channels must be nonnegative"))
-    if gauge_set isa AbstractMatrix
-        shifts = Matrix{CF}(gauge_set)
-        size(shifts, 1) == Nc || throw(
-            DimensionMismatch(
-                "gauge shifts must have $Nc rows, got $(size(shifts, 1))"
-            )
-        )
-        size(shifts, 2) >= 1 || throw(ArgumentError("gauge shifts must contain at least one column"))
-        all(isfinite, shifts) || throw(ArgumentError("gauge shifts must be finite"))
-        ng = size(shifts, 2)
-        return _GaugeData(
-            shifts, :manual, zeros(CF, 0, ng),
-            ones(Float64, ng), (;), :manual
-        )
-    end
-    shifts = Matrix{CF}(gauge_set.shifts)
-    size(shifts, 1) == Nc || throw(
-        DimensionMismatch(
-            "gauge shifts must have $Nc rows, got $(size(shifts, 1))"
-        )
-    )
-    ng = size(shifts, 2)
-    ng >= 1 || throw(ArgumentError("gauge shifts must contain at least one column"))
-    all(isfinite, shifts) || throw(ArgumentError("gauge shifts must be finite"))
-    gauge_set.centers isa AbstractMatrix || throw(ArgumentError("gauge centers must be a matrix"))
-    centers = Matrix{CF}(gauge_set.centers)
-    size(centers, 2) == ng || throw(
-        DimensionMismatch(
-            "gauge centers must have $ng columns, got $(size(centers, 2))"
-        )
-    )
-    all(isfinite, centers) || throw(ArgumentError("gauge centers must be finite"))
-    gauge_set.weights isa AbstractVector || throw(ArgumentError("gauge weights must be a vector"))
-    weights = Vector{Float64}(gauge_set.weights)
-    length(weights) == ng || throw(
-        DimensionMismatch(
-            "gauge weights must have length $ng, got $(length(weights))"
-        )
-    )
-    all(isfinite, weights) || throw(ArgumentError("gauge weights must be finite"))
-    all(>=(0), weights) || throw(ArgumentError("gauge weights must be nonnegative"))
-    sum(weights) > 0 || throw(ArgumentError("gauge weights must have positive sum"))
-    diagnostics = _copy_gauge_diagnostic(gauge_set.diagnostics)
-    return _GaugeData(
-        shifts, gauge_set.method, centers, weights,
-        diagnostics, :validated
-    )
-end
-
-function _validated_shifts(shifts, nchannels::Int)
-    parsed = Tuple{Int, CF}[]
-    for shift in shifts
-        length(shift) == 2 || throw(ArgumentError("shifts must contain (channel, zeta) pairs"))
-        idx, ζraw = shift
-        idx isa Integer || throw(ArgumentError("shift channel indices must be integers"))
-        1 <= idx <= nchannels || throw(ArgumentError("shift channel $idx is out of range"))
-        isfinite(ζraw) || throw(ArgumentError("collapse shifts must be finite"))
-        push!(parsed, (Int(idx), CF(ζraw)))
-    end
-    indices = first.(parsed)
-    length(unique(indices)) == length(indices) ||
-        throw(ArgumentError("shift channel indices must be unique, got $indices"))
-    return parsed
-end
-
-# Paper: H^(g), C_μ^(g) (Eq. 9).
-function _shifted_problem(
-        H::Matrix{CF}, C::Vector{Matrix{CF}},
-        z::AbstractVector{CF}
-    )
-    N = size(H, 1)
-    size(H, 2) == N || throw(DimensionMismatch("H must be square"))
-    length(z) == length(C) || throw(
-        DimensionMismatch(
-            "shift vector has length $(length(z)); expected $(length(C))"
-        )
-    )
-    all(Cμ -> size(Cμ) == (N, N), C) ||
-        throw(DimensionMismatch("every collapse operator must have size ($N, $N)"))
-    all(isfinite, z) || throw(ArgumentError("collapse shifts must be finite"))
-    Hshift = copy(H)
-    Cshift = Matrix{CF}[copy(Cμ) for Cμ in C]
-    for μ in eachindex(Cshift)
-        ζ = z[μ]
-        Hshift .+= (im / 2) .* (ζ .* C[μ]' .- conj(ζ) .* C[μ])
-        @inbounds for i in 1:N
-            Cshift[μ][i, i] += ζ
-        end
-    end
-    return Hshift, Cshift
-end
-
-# Paper: H^(g), C_μ^(g) (Eq. 9).
-function _shifted_problem(
-        Hmat::AbstractMatrix{CF},
-        C::AbstractVector{<:AbstractMatrix{CF}},
-        shifts::AbstractVector{<:Tuple{Int, <:Number}}
-    )
-    parsed = _validated_shifts(shifts, length(C))
-    z = zeros(CF, length(C))
-    for (idx, ζ) in parsed
-        z[idx] = ζ
-    end
-    return _shifted_problem(Matrix{CF}(Hmat), Matrix{CF}[Matrix{CF}(Cμ) for Cμ in C], z)
-end
-
-# Paper: H^(g), C_μ^(g) (Eq. 9).
-function _shifted_problem(H, C::AbstractVector, shifts::AbstractVector{<:Tuple})
-    dims = Tuple(first(H.dims))
-    Tuple(last(H.dims)) == dims || throw(DimensionMismatch("H must be an operator"))
-    all(op -> Tuple(first(op.dims)) == dims && Tuple(last(op.dims)) == dims, C) ||
-        throw(DimensionMismatch("every collapse operator must have tensor dimensions $dims"))
-    Hshift, Cshift = _shifted_problem(
-        Matrix{CF}(H.data), Matrix{CF}[Matrix{CF}(op.data) for op in C], shifts
-    )
-    hdata = H.data isa SparseMatrixCSC ? sparse(Hshift) : Hshift
-    cdata = [
-        (C[i].data isa SparseMatrixCSC ? sparse(Cμ) : Cμ)
-            for (i, Cμ) in enumerate(Cshift)
-    ]
-    return QuantumObject(hdata; dims = H.dimensions),
-        [QuantumObject(cdata[i]; dims = C[i].dimensions) for i in eachindex(cdata)]
-end
-
-# Workers under ensemblealg=:distributed deserialize the pilot closure, so it and
-# its runner must live in the core module: workers need not load Clustering.
-function _run_discovery_indices(f, nseeds::Int, ensemblealg::Symbol)
-    results = Vector{Any}(undef, nseeds)
-    if ensemblealg === :distributed
-        for (index, result) in pmap(index -> (index, f(index)), 1:nseeds)
-            results[index] = result
-        end
-    elseif ensemblealg === :threads && Threads.nthreads() > 1
-        nchunks = max(1, min(2 * Threads.nthreads(), nseeds))
-        @sync for indices in _chunk_ranges(nseeds, nchunks)
-            Threads.@spawn for index in indices
-                results[index] = f(index)
-            end
-        end
-    else
-        for index in 1:nseeds
-            results[index] = f(index)
-        end
-    end
-    return results
-end
-
-_mean(x) = sum(x) / length(x)
-
-# Paper: ᾱ_j^(r) and terminal ⟨C_μ⟩ averages (Eqs. A.7–A.8).
-function _preliminary_pilot_results(
-        Hrun, Crun, e_ops, tlist, tail, amplitudes, mode_dims, seed, nsave, ensemblealg
-    )
-    nmodes, nseeds = size(amplitudes)
-    # QuantumToolbox's retained-run keyword predates DiSLOUTrajectories.
-    pilot_storage = (; Symbol("keep_" * "runs_results") => Val(true))
-    relax = function (point)
-        psi0 = tensor((coherent(Int(mode_dims[mode]), amplitudes[mode, point]) for mode in 1:nmodes)...)
-        sol = mcsolve(
-            Hrun, psi0, tlist, Crun; e_ops, ntraj = 1,
-            rng = _traj_rng(seed, point),
-            pilot_storage..., saveat = tlist,
-            progress_bar = Val(false)
-        )
-        return (; means = CF[_mean(@view sol.expect[mode, 1, tail]) for mode in 1:nmodes], occupations = Float64[_mean(real.(@view sol.expect[nmodes + mode, 1, tail])) for mode in 1:nmodes], collapses = CF[_mean(@view sol.expect[2nmodes + channel, 1, tail]) for channel in eachindex(Crun)], trace_states = point <= nsave ? hcat((CF.(vec(state.data)) for state in sol.states)...) : nothing, trace_means = point <= nsave ? Matrix{CF}(@view sol.expect[1:nmodes, 1, :]) : nothing, trace_occupations = point <= nsave ? Float64.(real.(@view sol.expect[(nmodes + 1):2nmodes, 1, :])) : nothing, jump_times = point <= nsave ? copy(sol.col_times[1]) : nothing, jump_channels = point <= nsave ? copy(sol.col_which[1]) : nothing)
-    end
-    return _run_discovery_indices(relax, nseeds, ensemblealg)
-end
+# Gauge discovery: shifts ζ_μ^(g) from clusters of preliminary trajectories
+# (paper Appendix A.2) or from stable semiclassical fixed points (Appendix A.1).
 
 """
     discover_gauges(H, c_ops; <keyword arguments>)
@@ -197,7 +12,7 @@ quantum trajectories and requires `Clustering.jl`. Otherwise, you can provide sy
 constructors for the Hamiltonian and collapse operators, select `method=:semiclassical` and load `QuantumCumulants.jl` to find
 stable mean-field fixed points. Install these optional packages before loading them.
 
-See also [`dislou_solve`](@ref), [`DiSLOUSolution`](@ref).
+See also [`dislou_solve`](@ref).
 
 # Examples
 
@@ -211,8 +26,7 @@ julia> a = destroy(2);
 julia> gauges = discover_gauges(0.0 * a, [a];
            mode_ops = [a], mode_dims = [2], discovery_time = 1.0,
            seed_radii = [0.0], cluster_scales = [1.0], step = 1.0,
-           nseeds = 2, min_neighbors = 1, min_weight = 0.0,
-           seed = 1, ensemblealg = :serial);
+           nseeds = 2, min_neighbors = 1, min_weight = 0.0);
 
 julia> (gauges.method, size(gauges.shifts), all(iszero, gauges.shifts))
 (:trajectories, (1, 1), true)
@@ -290,13 +104,13 @@ the semiclassical method must be selected explicitly.
   passed to `Clustering.dbscan`. Defaults to `10`.
 - `min_weight`: Minimum retained cluster population as a fraction of all
   `nseeds` samples. Must be finite and in `[0, 1)`; defaults to `0.02`.
-- `seed::Integer`: Integer in `0:typemax(UInt64)` controlling the initial amplitudes and
-  preliminary trajectory streams. Defaults to `1`.
+- `rng::AbstractRNG`: Random number generator for the initial amplitudes and
+  the preliminary trajectory streams. Defaults to `Random.default_rng()`.
 - `save_preliminary_trajectories::Int`: Nonnegative number of preliminary
   trajectories whose state, expectation, and jump traces are retained in the
   diagnostics. Defaults to `0`; values above `nseeds` retain all trajectories.
-- `ensemblealg::Symbol`: Execution mode for the preliminary trajectories: `:serial`,
-  `:threads` (default), or `:distributed`. Distributed execution requires
+- `ensemblealg`: How the preliminary trajectories run: `EnsembleThreads()` (default),
+  `EnsembleSerial()`, or `EnsembleDistributed()`. Distributed execution requires
   worker processes with DiSLOUTrajectories and QuantumToolbox loaded.
 
 ## Semiclassical discovery
@@ -367,7 +181,7 @@ For trajectory discovery, `diagnostics` contains:
   of event-time and one-based collapse-channel vectors for the retained runs.
 - The resolved discovery settings: `mode_dims`, `discovery_time`, `seed_radii`,
   `cluster_scales`, `step`, `nseeds`, `terminal_window`, `preliminary_shifts`,
-  `dbscan_radius`, `min_neighbors`, `min_weight`, `seed`, and
+  `dbscan_radius`, `min_neighbors`, `min_weight`, and
   `save_preliminary_trajectories`. The last field records the retained count,
   capped at `nseeds`.
 
@@ -384,26 +198,68 @@ For semiclassical discovery, `diagnostics` contains:
 discover_gauges(model, collapse_operators; method::Symbol = :trajectories, kwargs...) =
     _discover_gauges(Val(method), model, collapse_operators; kwargs...)
 
-# Methods live in DiSLOUTrajectoriesClusteringExt (Val{:trajectories}) and
-# DiSLOUTrajectoriesQuantumCumulantsExt (Val{:semiclassical}).
-function _discover_gauges end
-
-const _DISCOVERY_EXTENSIONS = (
-    trajectories = (:DiSLOUTrajectoriesClusteringExt, "Clustering"),
-    semiclassical = (:DiSLOUTrajectoriesQuantumCumulantsExt, "QuantumCumulants"),
-)
-
-# Turns the bare MethodError of an unloaded or unknown method into an actionable hint.
-function _discovery_error_hint(io, exc, argtypes, kwargs)
-    f = exc.f === Core.kwcall && length(exc.args) >= 2 ? exc.args[2] : exc.f
-    f === _discover_gauges && !isempty(argtypes) && argtypes[1] <: Val || return
-    method = argtypes[1].parameters[1]
-    if !haskey(_DISCOVERY_EXTENSIONS, method)
-        print(io, "\nUnsupported gauge discovery method $(repr(method)); use :trajectories or :semiclassical.")
-        return
-    end
-    extension, package = _DISCOVERY_EXTENSIONS[method]
-    Base.get_extension(@__MODULE__, extension) === nothing || return
-    print(io, "\nmethod=:$method requires $package; run `using $package` before calling discover_gauges.")
-    return
+# The methods live in the Clustering (:trajectories) and QuantumCumulants
+# (:semiclassical) extensions. This fallback runs when they are not loaded.
+function _discover_gauges(::Val{method}, args...; kwargs...) where {method}
+    package = get((trajectories = "Clustering", semiclassical = "QuantumCumulants"), method, nothing)
+    package === nothing &&
+        throw(ArgumentError("unknown gauge discovery method :$method; use :trajectories or :semiclassical"))
+    throw(ArgumentError("method = :$method requires $package. Try running `using $package` first."))
 end
+
+# Paper Eqs. (A.6–A.7): one trajectory from each random coherent state, averaging
+# the mode amplitudes and the collapse expectations over the terminal window.
+# Used by the Clustering extension; it lives here so that distributed workers can
+# run it without loading Clustering.
+function _run_preliminary_trajectories(
+        H, c_ops, shifts, mode_ops, mode_dims, discovery_time, seed_radii, step, nseeds,
+        terminal_window, rng, save_preliminary_trajectories, ensemblealg
+    )
+    tlist = collect(0.0:float(step):float(discovery_time))
+    last(tlist) < discovery_time && push!(tlist, float(discovery_time))
+    start = discovery_time - terminal_window
+    tail = findall(t -> t >= start || t ≈ start, tlist)   # the window, up to rounding of `start`
+
+    Hrun, Crun = all(iszero, shifts) ? (H, c_ops) : _shifted_operators(H, c_ops, shifts)
+    nmodes = length(mode_ops)
+    e_ops = vcat(collect(mode_ops), [op' * op for op in mode_ops], collect(c_ops))
+    modes, occupations, collapses = 1:nmodes, nmodes .+ (1:nmodes), 2nmodes .+ eachindex(c_ops)
+
+    # Initial amplitudes uniform in a disk of radius `seed_radii[mode]`, and one seed per run.
+    amplitudes = [seed_radii[mode] * sqrt(rand(rng)) * cis(2π * rand(rng)) for mode in 1:nmodes, _ in 1:nseeds]
+    seeds = [rand(rng, UInt64) for _ in 1:nseeds]
+    nsave = min(save_preliminary_trajectories, nseeds)
+
+    function relax(point)
+        ψ0 = tensor((coherent(Int(mode_dims[mode]), amplitudes[mode, point]) for mode in 1:nmodes)...)
+        sol = mcsolve(
+            Hrun, ψ0, tlist, Crun; e_ops, ntraj = 1, rng = Xoshiro(seeds[point]), saveat = tlist,
+            keep_runs_results = Val(true), ensemblealg = EnsembleSerial(), progress_bar = Val(false)
+        )
+        expect = sol.expect[:, 1, :]
+        terminal = vec(sum(expect[:, tail]; dims = 2)) / length(tail)
+        point <= nsave || return (; terminal, trace = nothing)
+        states = stack(ψ.data for ψ in vec(sol.states))
+        return (; terminal, trace = (; states, expect, col_times = sol.col_times[1], col_which = sol.col_which[1]))
+    end
+
+    results = _map_seeds(relax, nseeds, ensemblealg)
+    averages = stack(result.terminal for result in results)
+    traces = [results[point].trace for point in 1:nsave]
+    return (;
+        tlist, nsave,
+        terminal_means = averages[modes, :],
+        terminal_occupations = real.(averages[occupations, :]),
+        terminal_collapse_means = averages[collapses, :],
+        states = [trace.states for trace in traces],
+        traces = [trace.expect[modes, :] for trace in traces],
+        occupations = [real.(trace.expect[occupations, :]) for trace in traces],
+        jump_times = [trace.col_times for trace in traces],
+        jump_channels = [trace.col_which for trace in traces],
+    )
+end
+
+# Run `f(i)` for `i in 1:n` as requested by `ensemblealg`.
+_map_seeds(f, n, ::EnsembleSerial) = map(f, 1:n)
+_map_seeds(f, n, ::EnsembleThreads) = fetch.([Threads.@spawn f(i) for i in 1:n])
+_map_seeds(f, n, ::EnsembleDistributed) = Distributed.pmap(f, 1:n)

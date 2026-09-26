@@ -5,13 +5,8 @@ using QuantumCumulants
 @testset "extension activation needs only QuantumCumulants" begin
     @test Base.get_extension(DiSLOUTrajectories, :DiSLOUTrajectoriesQuantumCumulantsExt) !== nothing
     @test !isdefined(Main, :ModelingToolkitBase)
-    err = try
-        discover_gauges(nothing, []; method = :semiclassical)
-    catch caught
-        caught
-    end
-    @test err isa MethodError
-    @test !occursin("using QuantumCumulants", sprint(showerror, err))
+    # The call reaches the extension, which requires `limits`, and not the fallback.
+    @test_throws UndefKeywordError discover_gauges(nothing, []; method = :semiclassical)
 end
 
 include("fixtures/two_mode_diamond.jl")
@@ -26,24 +21,18 @@ include("fixtures/two_mode_diamond.jl")
     )
     fixture = two_mode_diamond_numerical_fixture(Tuple(Int.(limits) .+ 1))
     solution = dislou_solve(
-        fixture.H, fixture.psi0, [0.0], fixture.c_ops;
-        gauge_set = result, ntraj = 1, seed = 5, ensemblealg = :serial
+        fixture.H, fixture.psi0, [0.0, 0.1], fixture.c_ops;
+        gauge_set = result, ntraj = 2, rng = Xoshiro(5), progress_bar = Val(false)
     )
 
-    @test solution isa DiSLOUSolution
-    @test solution.gauge_diagnostics.method === :semiclassical
-    @test solution.gauge_diagnostics.count == size(result.shifts, 2)
+    @test solution isa TimeEvolutionMCSol
+    @test length(solution.alg.bases) == size(result.shifts, 2)
 end
 
 function captured_argument_error(f)
-    try
-        f()
-        @test false
-        return ""
-    catch err
-        @test err isa ArgumentError
-        return sprint(showerror, err)
-    end
+    err = thrown(f)
+    @test err isa ArgumentError
+    return sprint(showerror, err)
 end
 
 @variables Δ::Real η::Real γ::Real
@@ -194,5 +183,5 @@ end
     @test size(result.diagnostics.roots, 1) == 2
     @test length(result.diagnostics.stability) == size(result.diagnostics.roots, 2)
     @test size(result.diagnostics.rejected, 1) == 2
-    @test DiSLOUTrajectories._validated_gauge_data(result, size(result.shifts, 1)).shifts == result.shifts
+    @test DiSLOUTrajectories._gauge_shifts(result, size(result.shifts, 1)) == result.shifts
 end

@@ -35,6 +35,7 @@ using DiSLOUTrajectories
 using LinearAlgebra
 using Printf
 using QuantumToolbox
+using Random
 import QuantumCumulants
 
 include(joinpath(examples_dir, "exact_steady_state.jl"))
@@ -99,7 +100,7 @@ c_ops = collapse_operators(a, b)
 
 ## Semiclassical gauges
 
-The symbolic mean-field equations have five fixed points: three stable centers ``(\alpha_g,\beta_g)`` defining ``\zeta_\mu^{(g)}`` through Eq. (A.6) and two unstable saddles.
+The symbolic mean-field equations have five fixed points: three stable centers ``(\alpha_g,\beta_g)`` defining ``\zeta_\mu^{(g)}`` through Eq. (A.5) and two unstable saddles.
 
 ```julia
 semiclassical_limits = (full_dims[1] - 1, full_dims[2] - 1)
@@ -205,15 +206,15 @@ sol = dislou_solve(
     e_ops=[xa, na, nb],
     gauge_set=sc,
     ntraj,
-    ensemblealg=:threads,
-    seed=ensemble_seed,
+    rng=Xoshiro(ensemble_seed),
     saveat=snapshot_times,
-    save_trajectories=true,
+    keep_runs_results=Val(true),
 )
+sum(length, sol.col_times)
 ```
 
 ```text
-DiSLOUSolution(ntraj=1024, Ne=3, Nt=31, total_jumps=175830)
+176402
 ```
 
 ### Read the observables
@@ -222,8 +223,8 @@ Plot the memory quadrature and both occupations with standard-error bands,
 alongside six individual memory-quadrature trajectories.
 
 ```julia
-observable_mean = real.(sol.expect)
-observable_sem = sol.expect_sem
+observable_mean = real.(average_expect(sol))
+observable_sem = std_expect(sol) ./ sqrt(ntraj)
 fig_observables = Figure(size=(950, 850))
 labels = ["⟨xₐ⟩", "⟨nₐ⟩", "⟨nᵦ⟩"]
 titles = ["Memory quadrature", "Memory occupation", "Buffer occupation"]
@@ -238,7 +239,7 @@ end
 ax_trajectories = Axis(fig_observables[1:3, 2]; xlabel="t (μs)", ylabel="⟨xₐ⟩",
     title="Individual trajectories")
 for trajectory in 1:min(6, ntraj)
-    lines!(ax_trajectories, tlist, real.(sol.trajectory_expect[1, trajectory, :]);
+    lines!(ax_trajectories, tlist, real.(sol.expect[1, trajectory, :]);
         label="trajectory $trajectory")
 end
 axislegend(ax_trajectories; position=:rb)
@@ -256,7 +257,7 @@ times.
 ```julia
 xvec = collect(range(-8.0, 8.0; length=QUICK ? 41 : 161))
 yvec = copy(xvec)
-memory_states = [ptrace(state, 1) for state in sol.states]
+memory_states = [ptrace(state, 1) for state in average_states(sol)]
 wigner_values = [permutedims(wigner(state, xvec, yvec)) for state in memory_states]
 color_limit = maximum(maximum(abs, W) for W in wigner_values)
 
@@ -288,16 +289,16 @@ layer3_sol = dislou_solve(
     e_ops=[xa, na, nb],
     gauge_set=sc,
     ntraj,
-    ensemblealg=:threads,
-    seed=ensemble_seed,
-    layer3=true,
+    rng=Xoshiro(ensemble_seed),
     layer3_sizes,
     residual_tolerance=1e-4,
+    keep_runs_results=Val(true),
 )
+sum(length, layer3_sol.col_times)
 ```
 
 ```text
-DiSLOUSolution(ntraj=1024, Ne=3, Nt=31, total_jumps=175835)
+176404
 ```
 
 Overlay the memory-quadrature means and standard-error bands from
@@ -305,8 +306,8 @@ the full-space and reduced runs. The steady-state Wigner calculation above
 is a stationary reference, while this plot compares two trajectory evolutions.
 
 ```julia
-layer3_mean = real.(layer3_sol.expect)
-layer3_sem = layer3_sol.expect_sem
+layer3_mean = real.(average_expect(layer3_sol))
+layer3_sem = std_expect(layer3_sol) ./ sqrt(ntraj)
 fig_validation = Figure(size=(900, 450))
 ax_validation = Axis(fig_validation[1, 1]; xlabel="t (μs)", ylabel="⟨xₐ⟩",
     title="Layers I + II and Layer III")

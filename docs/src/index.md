@@ -3,7 +3,7 @@
 ```DiSLOUTrajectories.jl``` provides an efficient implementation of the
 *Diagonal, Switching, and Locally Optimal Unraveling* method in ```Julia```. This approach is useful for the simulation of metastable open quanum systems using the quantum trajectories framework.
 
-The package is built on top of [`QuantumToolbox.jl`](https://github.com/qutip/QuantumToolbox.jl), reusing the same input objects and keeping the API for the main solver similar to that of ```mcsolve```:
+The package is built on top of [`QuantumToolbox.jl`](https://github.com/qutip/QuantumToolbox.jl): the solver runs ```mcsolve``` with an exact propagator, so it takes the same input objects and keyword arguments and returns the same solution:
 
 ```julia
 sol = dislou_solve(H, ψ0, tlist, c_ops; gauge_set, e_ops)
@@ -16,8 +16,8 @@ sol = dislou_solve(H, ψ0, tlist, c_ops; gauge_set, e_ops)
 DiSLOU supports open systems described by a finite-dimensional, time-independent Lindblad, for which the diagonalization of the effective Hamiltonian fits in memory.
 For the best performance, the system should exhibit metastability, and the quantum trajectories should remain close to the metastable states during most of the evolution.  A prototypical example of such a system is the driven-dissipative Kerr resonator in the bistable regime.
 
-The required gauges can be found through automatic discovery through short initial trajectories, semiclassical discovery from symbolic bosonic constructors, or they can be provided manually. The solver (`dislou_solve`) can record average expectation values, density
-matrices, and various diagnostic data. Refer to the [API reference](api.md) for further details.
+The required gauges can be found through automatic discovery through short initial trajectories, semiclassical discovery from symbolic bosonic constructors, or they can be provided manually. The solver (`dislou_solve`) returns expectation values, states and jump records,
+averaged or for every trajectory, as `mcsolve` does. Refer to the [API reference](api.md) for further details.
 
 ## Read next
 

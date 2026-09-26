@@ -37,17 +37,17 @@
 It provides an efficient approach to simulate quantum trajectories of metastable open quantum systems by combining different layers of optimizations.
 
 It is built on top of
-[`QuantumToolbox.jl`](https://github.com/qutip/QuantumToolbox.jl), and the main access point maintains a similar API to `mcsolve`:
+[`QuantumToolbox.jl`](https://github.com/qutip/QuantumToolbox.jl): `dislou_solve` runs `mcsolve` with an exact propagator in the eigenbasis of the effective Hamiltonian, takes the same keyword arguments, and returns the same solution type:
 
 ```julia
 sol = dislou_solve(H, ψ0, tlist, c_ops; gauge_set, e_ops)
 ```
 
-By default, only Layer I (locally optimal unravelings) and II (diagonal propagation) are enabled, while Layer III (reduced space propagation) can be used by setting `layer3 = true` and providing `layer3_sizes`.
+Layers I (locally optimal unravelings) and II (diagonal propagation) are always enabled. Layer III (reduced space propagation) is enabled by giving the number of slow modes to keep, `layer3_sizes`.
 
 ## Installation
 
-`DiSLOUTrajectories.jl` requires Julia 1.10 or later and QuantumToolbox 0.47. To install it, run in an interactive session (REPL):
+`DiSLOUTrajectories.jl` requires Julia 1.10 or later and QuantumToolbox 0.47.2 to 0.49. To install it, run in an interactive session (REPL):
 
 ```julia
 using Pkg
@@ -71,7 +71,7 @@ and set the gauge at $\alpha$, to minimize quantum jumps in the steady state. We
 collapse operator is $\sqrt{\kappa}(a-\alpha)$.
 
 ```jldoctest
-using QuantumToolbox, DiSLOUTrajectories
+using QuantumToolbox, DiSLOUTrajectories, Random
 
 N = 20
 κ = 1.0
@@ -85,15 +85,15 @@ e_ops = [num(N)]
 gauges = fill(-sqrt(κ) * α, 1, 1)
 
 sol = dislou_solve(H, ψ0, tlist, c_ops;
-                   gauge_set = gauges, e_ops, ntraj = 1_000, seed = 1)
-mean_n = expect_mean(sol)
-sem_n = expect_sem(sol)
+                   gauge_set = gauges, e_ops, ntraj = 1_000, rng = Xoshiro(1),
+                   progress_bar = Val(false))
+mean_n = real.(sol.expect[1, :])
 
-(isapprox(real(mean_n[end]), abs2(α); rtol = 0.02), all(isfinite, sem_n))
+isapprox(mean_n[end], abs2(α); rtol = 0.02)
 
 # output
 
-(true, true)
+true
 ```
 
 ## Documentation
