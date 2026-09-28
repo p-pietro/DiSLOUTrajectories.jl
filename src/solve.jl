@@ -52,6 +52,10 @@ Hamiltonian without changing the master equation (Eq. 9):
 
 # Notes
 
+- With Layer III, a user `callback` that changes the state while a reduced basis is
+  active has its components outside that basis discarded at the next step. State-changing
+  callbacks that leave the active slow subspace are unsupported; disable Layer III
+  with `layer3_sizes = nothing` when using them.
 - `dislou_solve` sets the `alg` and `jump_callback` of `mcsolve` itself.
 - Jump records (`col_times`, `col_which`) refer to the shifted operators of the gauge
   that was active at each jump.

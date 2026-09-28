@@ -10,8 +10,13 @@ The notation follows that of the [reference paper](./getting_started/cite.md) fo
 | `hysteresis` | ``η`` (Eq. 13) |
 | `layer3_sizes[g]` | Requested ``m^{(g)}``; degenerate modes can increase it (Eq. 20) |
 | `residual_tolerance` | ``r_{tol}``, applied to ``r_m^{(g)}(ψ)`` for normalized states (Eq. 21) |
-| `sol.states`, `average_states(sol)` | ``ρ_{MC}(t)`` (Section 4.1) |
-| `sol.expect` | Ensemble ``⟨O⟩(t)`` |
+| `average_states(sol)` | Averaged density matrices ``ρ_{MC}(t)`` at `sol.times_states` (Section 4.1) |
+| `sol.expect` | Average ``⟨O⟩(t)`` |
+
+With `keep_runs_results = Val(false)` (the default), `sol.states[time]` contains
+the density matrices. With `keep_runs_results = Val(true)`,
+`sol.states[trajectory, time]` contains a ket for each trajectory and saved time.
+`average_states(sol)` returns the averaged density matrices in either case.
 
 ## Solver
 

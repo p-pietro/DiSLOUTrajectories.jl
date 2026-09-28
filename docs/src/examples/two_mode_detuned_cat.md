@@ -46,7 +46,7 @@ const CF = ComplexF64
 ```
 
 ```text
-ComplexF64[90m (alias for [39m[90mComplex{Float64}[39m[90m)[39m
+ComplexF64 (alias for Complex{Float64})
 ```
 
 ## Detuned memory-buffer model

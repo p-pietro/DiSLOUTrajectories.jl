@@ -181,9 +181,9 @@ For trajectory discovery, `diagnostics` contains:
   of event-time and one-based collapse-channel vectors for the retained runs.
 - The resolved discovery settings: `mode_dims`, `discovery_time`, `seed_radii`,
   `cluster_scales`, `step`, `nseeds`, `terminal_window`, `preliminary_shifts`,
-  `dbscan_radius`, `min_neighbors`, `min_weight`, and
-  `save_preliminary_trajectories`. The last field records the retained count,
-  capped at `nseeds`.
+  `dbscan_radius`, `min_neighbors`, `min_weight`, `save_preliminary_trajectories`,
+  and `ensemblealg`. The `save_preliminary_trajectories` field records the retained
+  count, capped at `nseeds`.
 
 For semiclassical discovery, `diagnostics` contains:
 

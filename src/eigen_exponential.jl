@@ -104,6 +104,11 @@ mcsolve(H, ψ0, tlist, c_ops; alg = GaugeEigenExponential(H, c_ops), tstops = tl
 [`dislou_solve`](@ref) builds it with one eigenbasis per gauge, plus the slow-mode
 bases of Layer III when requested. Each trajectory then switches basis after its jumps.
 
+!!! note
+    Jump location and saving are supported only during integration. Post-solve
+    interpolation of a direct ODE solution, such as `sol(t)` between saved times,
+    is unsupported. Request the required times through `saveat`.
+
 !!! warning
     The algorithm never evaluates the ODE function. It must be built from the same
     `H` and `c_ops` that are given to `mcsolve`.
