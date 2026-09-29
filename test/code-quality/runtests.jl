@@ -28,10 +28,16 @@ include("../reporting/check.jl")
         basis = first(alg.bases)
         ψ = normalize(randn(rng, ComplexF64, N))
         C = [c.data for c in c_ops]
+        alg3 = GaugeEigenExponential(H, c_ops, zeros(ComplexF64, 1, 1); layer3_sizes = 2)
+        prob = DiSLOUTrajectories.SciMLBase.ODEProblem((du, u, p, t) -> nothing, ψ, (0.0, 1.0))
+        integrator = DiSLOUTrajectories.SciMLBase.init(prob, alg3)
         for (f, args) in (
                 (DiSLOUTrajectories._coordinates!, (similar(ψ), basis, ψ)),
-                (DiSLOUTrajectories._project!, (copy(ψ), basis, 1.0e-3, similar(ψ), similar(ψ))),
+                (DiSLOUTrajectories._project!, (similar(ψ), basis, ψ, 1.0e-3, similar(ψ))),
                 (DiSLOUTrajectories._gauge_activities!, (zeros(2), C, zeros(ComplexF64, 1, 2), ψ, similar(ψ))),
+                (DiSLOUTrajectories.OrdinaryDiffEqCore.perform_step!, (integrator, integrator.cache)),
+                (QuantumToolbox._mcsolve_jump_weights!, (zeros(1), nothing, similar(ψ), integrator)),
+                (QuantumToolbox._mcsolve_jump!, (integrator, nothing, 1, similar(ψ))),
             )
             @testset "$(nameof(f))" begin
                 JET.test_call(f, typeof.(args); target_modules = (DiSLOUTrajectories,), mode = :basic)

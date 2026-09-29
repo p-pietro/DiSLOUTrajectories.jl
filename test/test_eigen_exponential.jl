@@ -36,8 +36,10 @@
     @testset "the Layer III projection keeps the norm" begin
         slow = SM._slow_basis(first(alg.bases), 2)
         ψ = 2 * normalize(slow.V * ComplexF64[1, 1im])   # in the span of the slow modes
-        @test SM._project!(ψ, slow, 1.0e-3, zeros(ComplexF64, N), zeros(ComplexF64, N))
-        @test norm(ψ) ≈ 2
+        q = zeros(ComplexF64, 2)
+        @test SM._project!(q, slow, ψ, 1.0e-3, zeros(ComplexF64, N))
+        @test norm(q) ≈ 2
+        @test slow.Q * q ≈ ψ
     end
 
     @test sprint(show, alg) == "GaugeEigenExponential(1 gauge(s), 6 modes)"
