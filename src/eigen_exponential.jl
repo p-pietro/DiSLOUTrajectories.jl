@@ -5,7 +5,8 @@
 # Modes of the no-jump generator L = -i H_eff: eigenvalues `λ` and right
 # eigenvectors `V` (columns), either all of them (Layer II) or only the slowest
 # ones (Layer III). With V = Q R, the coordinates c = R⁻¹ Q†ψ of a state solve
-# V c = ψ without inverting V, and Q Q† projects on the span of the modes (Layer III).
+# V c = ψ without inverting V, Q Q† projects on the span of the modes (Layer III),
+# and Q†ψ = R c has the norm of ψ.
 # The arrays have the type of the model's arrays, for example GPU arrays.
 struct EigenBasis{T <: Number, VT <: AbstractVector{T}, MT <: AbstractMatrix{T}}
     λ::VT
@@ -31,6 +32,15 @@ Base.length(basis::EigenBasis) = length(basis.λ)
 
 # Coordinates c with V c = ψ (the least-squares fit if ψ is outside the span of V).
 _coordinates!(c, basis::EigenBasis, ψ) = ldiv!(basis.R, mul!(c, basis.Q', ψ))
+
+# The state V c or, when `coordinates`, its coordinates Q†ψ = R c followed by zeros.
+function _write_state!(out, basis::EigenBasis, c, coordinates::Bool)
+    coordinates || return mul!(out, basis.V, c)
+    n = length(basis)
+    mul!(view(out, 1:n), basis.R, c)
+    fill!(view(out, (n + 1):length(out)), 0)
+    return out
+end
 
 _effective_hamiltonian(H, c_ops) = H - im * sum(C' * C for C in c_ops) / 2
 
@@ -126,9 +136,9 @@ Layer III when requested. Each trajectory then switches gauge and basis at its j
     The algorithm never evaluates the ODE function. It must be built from the same
     `H` and `c_ops` that are given to `mcsolve`.
 """
-struct GaugeEigenExponential{B <: EigenBasis, TC} <: OrdinaryDiffEqCore.OrdinaryDiffEqLinearExponentialAlgorithm
+struct GaugeEigenExponential{B <: EigenBasis, S, TC} <: OrdinaryDiffEqCore.OrdinaryDiffEqLinearExponentialAlgorithm
     bases::Vector{B}             # all modes, one basis per gauge (Layer II)
-    reduced_bases::Vector{B}     # slowest modes, one basis per gauge (Layer III), or empty
+    slow::Vector{S}              # slowest modes, one `SlowModes` per gauge (Layer III), or empty
     C::Vector{TC}                # collapse operators C_μ
     shifts::Matrix{ComplexF64}   # ζ[μ, g]: gauge g jumps with C_μ + ζ[μ, g] (Layer I)
     hysteresis::Float64          # η
@@ -139,24 +149,24 @@ GaugeEigenExponential(H::QuantumObject, c_ops) =
     GaugeEigenExponential(H, c_ops, zeros(ComplexF64, length(c_ops), 1))
 
 # One basis per gauge (column of `shifts`) and, for Layer III, `layer3_sizes` slow modes
-# per gauge.
+# per gauge, with their matrices for the jumps and for the expectation values of `e_ops`.
 function GaugeEigenExponential(
         H::QuantumObject, c_ops, shifts::AbstractMatrix;
-        hysteresis = 1, layer3_sizes = nothing, residual_tolerance = 1.0e-3
+        hysteresis = 1, layer3_sizes = nothing, residual_tolerance = 1.0e-3, e_ops = ()
     )
     gauges = [_shifted_operators(H, c_ops, ζ) for ζ in eachcol(shifts)]
     bases = [_full_basis(_effective_hamiltonian(Hg, Cg).data) for (Hg, Cg) in gauges]
     C = [op.data for op in c_ops]
-    reduced_bases = layer3_sizes === nothing ? empty(bases) :
-        map(_slow_basis, bases, _layer3_sizes(layer3_sizes, length(bases)))
+    slow = layer3_sizes === nothing ? SlowModes{eltype(bases), typeof(first(bases).V)}[] :
+        _slow_modes(bases, _layer3_sizes(layer3_sizes, length(bases)), C, shifts, e_ops)
     return GaugeEigenExponential(
-        bases, reduced_bases, C, Matrix{ComplexF64}(shifts), float(hysteresis), float(residual_tolerance)
+        bases, slow, C, Matrix{ComplexF64}(shifts), float(hysteresis), float(residual_tolerance)
     )
 end
 
 function Base.show(io::IO, alg::GaugeEigenExponential)
     print(io, "GaugeEigenExponential(", length(alg.bases), " gauge(s), ", length(first(alg.bases)), " modes")
-    isempty(alg.reduced_bases) || print(io, ", Layer III modes ", length.(alg.reduced_bases))
+    isempty(alg.slow) || print(io, ", Layer III modes ", [length(s.basis) for s in alg.slow])
     return print(io, ")")
 end
 
@@ -173,6 +183,7 @@ OrdinaryDiffEqCore.@cache mutable struct GaugeEigenExponentialCache{uType, B <: 
     activities::Vector{Float64}   # activity of each gauge
     gauge::Int
     reduced::Bool     # whether `basis` holds the slow modes of the gauge (Layer III)
+    coordinates::Bool # whether `u` holds the coordinates Q†ψ on these modes instead of ψ
 end
 
 function OrdinaryDiffEqCore.alg_cache(
@@ -182,7 +193,7 @@ function OrdinaryDiffEqCore.alg_cache(
     ) where {uEltypeNoUnits, uBottomEltypeNoUnits, tTypeNoUnits}
     return GaugeEigenExponentialCache(
         u, uprev, zero(u), zero(u), zero(u), zero(u), zero(u),
-        first(alg.bases), zeros(length(alg.bases)), 1, false
+        first(alg.bases), zeros(length(alg.bases)), 1, false, false
     )
 end
 
@@ -211,8 +222,9 @@ end
 # Move to the gauge `g` at the state ψ: on its slow modes if ψ is close to them (Layer
 # III), otherwise on all its modes.
 function _enter_gauge!(cache, alg, g, ψ)
-    if !isempty(alg.reduced_bases)
-        basis = alg.reduced_bases[g]
+    cache.coordinates = false
+    if !isempty(alg.slow)
+        basis = alg.slow[g].basis
         q = view(cache.c_scratch, 1:length(basis))
         if _project!(q, basis, ψ, alg.residual_tolerance, cache.tmp)
             return _enter_slow_modes!(cache, alg, g, q)
@@ -223,7 +235,7 @@ end
 
 # The next step starts on the slow modes of the gauge `g`, from the coordinates q = Q†ψ.
 function _enter_slow_modes!(cache, alg, g, q)
-    basis = alg.reduced_bases[g]
+    basis = alg.slow[g].basis
     ldiv!(view(cache.c_next, 1:length(basis)), basis.R, q)
     cache.gauge = g
     cache.basis = basis
@@ -248,13 +260,27 @@ function OrdinaryDiffEqCore.perform_step!(integrator, cache::GaugeEigenExponenti
     c = view(cache.c, 1:length(basis))
     c_next = view(cache.c_next, 1:length(basis))
     copyto!(c, c_next)
+    # On the slow modes, the state is stored as its coordinates, except where it is saved.
+    cache.coordinates = cache.reduced && !_saves_step_end(integrator)
     @. c_next = exp(basis.λ * dt) * c
-    mul!(u, basis.V, c_next)
+    _write_state!(u, basis, c_next, cache.coordinates)
     copyto!(cache.ulast, u)
     return nothing
 end
 
-# Exact dense output of the current step: ψ(t + Θ dt) = V e^{Λ Θ dt} c, or its time derivative.
+# Whether the state at the end of the step is saved, by `saveat`, `save_end` or `save_everystep`.
+function _saves_step_end(integrator)
+    opts = integrator.opts
+    opts.save_on || return false
+    opts.save_everystep && return true
+    t = integrator.t + integrator.dt
+    saved(s) = abs(s - t) <= 100 * eps(abs(s))
+    return (!isempty(opts.saveat) && saved(integrator.tdir * first(opts.saveat))) ||
+        (opts.save_end && saved(last(integrator.sol.prob.tspan)))
+end
+
+# Exact dense output of the current step: ψ(t + Θ dt) = V e^{Λ Θ dt} c, or its time
+# derivative, stored as the end of the step is.
 function _dense_output!(out, Θ, dt, y₀, cache, derivative::Bool)
     y₀ === cache.uprev || throw(ArgumentError("GaugeEigenExponential can only interpolate within the current step"))
     basis = cache.basis
@@ -265,7 +291,7 @@ function _dense_output!(out, Θ, dt, y₀, cache, derivative::Bool)
     else
         @. w = exp(basis.λ * (Θ * dt)) * c
     end
-    return mul!(out, basis.V, w)
+    return _write_state!(out, basis, w, cache.coordinates)
 end
 
 function OrdinaryDiffEqCore._ode_interpolant!(

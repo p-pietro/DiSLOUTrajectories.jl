@@ -13,6 +13,7 @@ export dislou_solve, discover_gauges, GaugeEigenExponential
 include("info.jl")
 include("gauges.jl")
 include("eigen_exponential.jl")
+include("slow_modes.jl")
 include("jumps.jl")
 include("solve.jl")
 include("gauge_discovery.jl")
