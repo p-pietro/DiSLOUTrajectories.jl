@@ -134,7 +134,9 @@ function dislou_solve(
     # not change the results: it bounds the interval searched for each jump, so the
     # search needs fewer evaluations, and the results are saved at step ends. With Layer
     # III, the times of `saveat` are stops too: only step ends can store the full state.
-    stops = isempty(alg.slow) ? tlist : vcat(tlist, get(kwargs, :saveat, Float64[]))
+    saveat = get(kwargs, :saveat, Float64[])
+    saveat_stops = saveat isa Number ? (first(tlist):saveat:last(tlist)) : saveat
+    stops = isempty(alg.slow) ? tlist : vcat(tlist, saveat_stops)
     tstops = sort!(unique!(vcat(collect(Float64, stops), tstops)))
 
     # The state has the array type and precision of the eigenbases.
