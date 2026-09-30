@@ -9,6 +9,7 @@ using Clustering
 using DiSLOUTrajectories
 using LinearAlgebra
 using QuantumToolbox
+using Random
 import QuantumCumulants</code></pre><h2 id="Ideal-cat-model-(Section-5.1)"><a class="docs-heading-anchor" href="#Ideal-cat-model-(Section-5.1)">Ideal cat model (Section 5.1)</a><a id="Ideal-cat-model-(Section-5.1)-1"></a><a class="docs-heading-anchor-permalink" href="#Ideal-cat-model-(Section-5.1)" title="Permalink"></a></h2><p>The memory mode <span>$a$</span> is stabilized by a lossy buffer mode <span>$b$</span>. Equation (24) with <span>$\Delta_a=\Delta_b=K_b=\chi=0$</span> and real <span>$\varepsilon_b$</span> gives</p><p class="math-container">\[H=-\frac{K_a}{2}a^{\dagger 2}a^2+g_2\left(a^2b^\dagger+a^{\dagger 2}b\right)+\varepsilon_b\left(b+b^\dagger\right),\]</p><p>with the jump operators of Eq. (25),</p><p class="math-container">\[C_1=\sqrt{\kappa_1}\,a,\qquad C_b=\sqrt{\kappa_b}\,b,\qquad C_\phi=\sqrt{\kappa_\phi}\,a^\dagger a.\]</p><p>The code&#39;s <code>K</code> denotes <span>$K_a=-0.01$</span>. We use <span>$g_2=\sqrt5$</span>, <span>$\varepsilon_b=-6\sqrt5$</span>, <span>$\kappa_1=0.01$</span>, <span>$\kappa_b=20$</span>, <span>$\kappa_\phi=0.001$</span>, and initial coherent amplitude <span>$\alpha=\sqrt6$</span>, matching the nominal occupation <span>$|\alpha|^2\simeq6$</span> in Section 5.1. The real negative drive fixes the example phase convention; Section 5.1 instead fixes it through <span>$\operatorname{Tr}[a^2\rho_{\rm ss}]=\alpha^2&gt;0$</span>. The effective two-photon loss rate is <span>$\kappa_2=4|g_2|^2/\kappa_b=1$</span>. The Fock cutoffs are <span>$N_a=20$</span>, <span>$N_b=6$</span>.</p><pre><code class="language-julia hljs">Na, Nb = 20, 6
 K, g2 = -0.01, sqrt(5.0)
 εb = -6.0 * sqrt(5.0)
@@ -35,7 +36,7 @@ H = cat_hamiltonian(a, b)
 c_ops = cat_collapse_operators(a, b)
 ψ0 = tensor(coherent(Na, α), fock(Nb, 0))
 
-(; Na, Nb, α, κ2, initial_xa=real(expect(xa, ψ0)))</code></pre><pre><code class="language-text hljs">(Na = 20, Nb = 6, α = 2.449489742783178, κ2 = 1.0000000000000002, initial_xa = 3.4640513712171925)</code></pre><h2 id="Semiclassical-and-trajectory-branch-discovery"><a class="docs-heading-anchor" href="#Semiclassical-and-trajectory-branch-discovery">Semiclassical and trajectory branch discovery</a><a id="Semiclassical-and-trajectory-branch-discovery-1"></a><a class="docs-heading-anchor-permalink" href="#Semiclassical-and-trajectory-branch-discovery" title="Permalink"></a></h2><p>The semiclassical centers <span>$(\alpha_g,\beta_g)$</span> determine <span>$\zeta_\mu^{(g)}$</span> through Eq. (A.6). The trajectory discovery method uses a betadyne unraveling: a large local-oscillator displacement is added to the memory-loss channel, while the buffer-loss and dephasing channels are left unchanged. This is needed to distinguish the <span>$+\alpha$</span> and <span>$-\alpha$</span> lobes, otherwise the trajectories would stabilize to cat states.<sup class="footnote-reference"><a id="citeref-unraveling" href="#footnote-unraveling" class="footnote-ref">[unraveling]</a><span class="footnote-preview" id="fn-unraveling"></span></sup> The code variable <code>β</code> is the displacement <span>$\zeta_1=2\sqrt{\kappa_1}\alpha$</span>, distinct from the buffer amplitude <span>$\beta_g$</span>.</p><pre><code class="language-julia hljs">sc = discover_gauges(
+(; Na, Nb, α, κ2, initial_xa=real(expect(xa, ψ0)))</code></pre><pre><code class="language-text hljs">(Na = 20, Nb = 6, α = 2.449489742783178, κ2 = 1.0000000000000002, initial_xa = 3.4640513712171925)</code></pre><h2 id="Semiclassical-and-trajectory-branch-discovery"><a class="docs-heading-anchor" href="#Semiclassical-and-trajectory-branch-discovery">Semiclassical and trajectory branch discovery</a><a id="Semiclassical-and-trajectory-branch-discovery-1"></a><a class="docs-heading-anchor-permalink" href="#Semiclassical-and-trajectory-branch-discovery" title="Permalink"></a></h2><p>The semiclassical centers <span>$(\alpha_g,\beta_g)$</span> determine <span>$\zeta_\mu^{(g)}$</span> through Eq. (A.5). The trajectory discovery method uses a betadyne unraveling: a large local-oscillator displacement is added to the memory-loss channel, while the buffer-loss and dephasing channels are left unchanged. This is needed to distinguish the <span>$+\alpha$</span> and <span>$-\alpha$</span> lobes, otherwise the trajectories would stabilize to cat states.<sup class="footnote-reference"><a id="citeref-unraveling" href="#footnote-unraveling" class="footnote-ref">[unraveling]</a><span class="footnote-preview" id="fn-unraveling"></span></sup> The code variable <code>β</code> is the displacement <span>$\zeta_1=2\sqrt{\kappa_1}\alpha$</span>, distinct from the buffer amplitude <span>$\beta_g$</span>.</p><pre><code class="language-julia hljs">sc = discover_gauges(
     cat_hamiltonian,
     cat_collapse_operators;
     method=:semiclassical,
@@ -61,8 +62,7 @@ trajectory_gauges = discover_gauges(
     dbscan_radius=0.5,
     min_neighbors=10,
     min_weight=0.02,
-    seed=1,
-    ensemblealg=:threads,
+    rng=Xoshiro(1),
 )
 
 preflight_positions = trajectory_gauges.diagnostics.terminal_means
@@ -141,12 +141,12 @@ sol = dislou_solve(
     e_ops=[xa, na, nb],
     gauge_set=sc,
     ntraj,
-    ensemblealg=:threads,
-    seed=ensemble_seed,
+    rng=Xoshiro(ensemble_seed),
     saveat=snapshot_times,
-    save_trajectories=true,
-)</code></pre><pre><code class="language-text hljs">DiSLOUSolution(ntraj=1024, Ne=3, Nt=519, total_jumps=16601)</code></pre><h3 id="Compare-observables-and-inspect-a-switch"><a class="docs-heading-anchor" href="#Compare-observables-and-inspect-a-switch">Compare observables and inspect a switch</a><a id="Compare-observables-and-inspect-a-switch-1"></a><a class="docs-heading-anchor-permalink" href="#Compare-observables-and-inspect-a-switch" title="Permalink"></a></h3><p>The figure shows the memory quadrature, both occupations, six individual trajectories, and a closer view of a persistent lobe switch with its recorded jumps. The detailed time grid in the preceding block supports this last panel.</p><pre><code class="language-julia hljs">observable_mean = real.(sol.expect)
-observable_sem = sol.expect_sem
+    keep_runs_results=Val(true),
+)
+sum(length, sol.col_times)</code></pre><pre><code class="language-text hljs">16267</code></pre><h3 id="Compare-observables-and-inspect-a-switch"><a class="docs-heading-anchor" href="#Compare-observables-and-inspect-a-switch">Compare observables and inspect a switch</a><a id="Compare-observables-and-inspect-a-switch-1"></a><a class="docs-heading-anchor-permalink" href="#Compare-observables-and-inspect-a-switch" title="Permalink"></a></h3><p>The figure shows the memory quadrature, both occupations, six individual trajectories, and a closer view of a persistent lobe switch with its recorded jumps. The detailed time grid in the preceding block supports this last panel.</p><pre><code class="language-julia hljs">observable_mean = real.(average_expect(sol))
+observable_sem = std_expect(sol) ./ sqrt(ntraj)
 mesolve_expect = real.(mesolve_sol.expect)
 
 fig_observables = Figure(size=(950, 1150))
@@ -188,7 +188,7 @@ for trajectory in 1:6
     lines!(
         ax_trajectories,
         κ2 .* tlist,
-        real.(sol.trajectory_expect[1, trajectory, :]);
+        real.(sol.expect[1, trajectory, :]);
         label=&quot;trajectory $trajectory&quot;,
     )
 end
@@ -213,8 +213,8 @@ function persistent_switch_sample(trajectory_x)
 end
 
 switch_candidates = Tuple{Int,Int}[]
-for trajectory in axes(sol.trajectory_expect, 2)
-    sample = persistent_switch_sample(real.(sol.trajectory_expect[1, trajectory, :]))
+for trajectory in axes(sol.expect, 2)
+    sample = persistent_switch_sample(real.(sol.expect[1, trajectory, :]))
     isnothing(sample) || push!(switch_candidates, (trajectory, sample))
 end
 isempty(switch_candidates) &amp;&amp; error(&quot;no persistent trajectory switch found in κ₂t ∈ $(switch_window)&quot;)
@@ -222,7 +222,7 @@ trajectory_index, switch_sample = argmin(
     candidate -&gt; abs(κ2 * tlist[candidate[2]] - sum(switch_window) / 2),
     switch_candidates,
 )
-trajectory_x = real.(sol.trajectory_expect[1, trajectory_index, :])
+trajectory_x = real.(sol.expect[1, trajectory_index, :])
 crossing_interval = findlast(
     index -&gt; signbit(trajectory_x[index]) != signbit(trajectory_x[index + 1]),
     1:switch_sample-1,
@@ -280,7 +280,7 @@ ax_na_zoom = Axis(
 lines!(
     ax_na_zoom,
     zoom_times,
-    real.(sol.trajectory_expect[2, trajectory_index, zoom_indices]);
+    real.(sol.expect[2, trajectory_index, zoom_indices]);
     color=:steelblue,
     linewidth=1.5,
 )
@@ -296,7 +296,7 @@ ax_nb_zoom = Axis(
 lines!(
     ax_nb_zoom,
     zoom_times,
-    real.(sol.trajectory_expect[3, trajectory_index, zoom_indices]);
+    real.(sol.expect[3, trajectory_index, zoom_indices]);
     color=:darkorange,
     linewidth=1.5,
 )
@@ -306,7 +306,7 @@ linkxaxes!(ax_na_zoom, ax_nb_zoom)
 xlims!(ax_na_zoom, switch_window...)
 fig_observables</code></pre><p><img src="../../assets/examples/two_mode_ideal_cat/observables.png" alt="Ideal-cat quadrature and occupations, individual trajectories, and a lobe switch with its jump record."/></p><h2 id="Memory-mode-Wigner-snapshots"><a class="docs-heading-anchor" href="#Memory-mode-Wigner-snapshots">Memory-mode Wigner snapshots</a><a id="Memory-mode-Wigner-snapshots-1"></a><a class="docs-heading-anchor-permalink" href="#Memory-mode-Wigner-snapshots" title="Permalink"></a></h2><p>Trace out the buffer from each saved ensemble state, then plot the memory Wigner function at the three snapshot times using a shared color scale.</p><pre><code class="language-julia hljs">xvec = collect(range(-5.0, 5.0; length=121))
 yvec = collect(range(-4.0, 4.0; length=121))
-memory_states = [ptrace(state, 1) for state in sol.states]
+memory_states = [ptrace(state, 1) for state in average_states(sol)]
 wigner_values = [wigner(state, xvec, yvec) for state in memory_states]
 wigner_plots = transpose.(wigner_values)
 color_limit = maximum(maximum(abs, W) for W in wigner_values)
@@ -343,13 +343,13 @@ fig_wigner</code></pre><p><img src="../../assets/examples/two_mode_ideal_cat/wig
     e_ops=[xa, na, nb],
     gauge_set=sc,
     ntraj,
-    ensemblealg=:threads,
-    seed=ensemble_seed,
-    layer3=true,
+    rng=Xoshiro(ensemble_seed),
     layer3_sizes=[60, 60],
     residual_tolerance=1e-3,
-)</code></pre><pre><code class="language-text hljs">DiSLOUSolution(ntraj=1024, Ne=3, Nt=519, total_jumps=16601)</code></pre><p>Compare the memory-quadrature mean and its standard error with the full-space ensemble and the master-equation solution.</p><pre><code class="language-julia hljs">layer3_mean = real.(layer3_sol.expect)
-layer3_sem = layer3_sol.expect_sem
+    keep_runs_results=Val(true),
+)
+sum(length, layer3_sol.col_times)</code></pre><pre><code class="language-text hljs">16267</code></pre><p>Compare the memory-quadrature mean and its standard error with the full-space ensemble and the master-equation solution.</p><pre><code class="language-julia hljs">layer3_mean = real.(average_expect(layer3_sol))
+layer3_sem = std_expect(layer3_sol) ./ sqrt(ntraj)
 
 fig_validation = Figure(size=(900, 450))
 ax_validation = Axis(
@@ -376,4 +376,4 @@ lines!(ax_validation, κ2 .* tlist, observable_mean[1, :]; color=:steelblue, lin
 lines!(ax_validation, κ2 .* tlist, layer3_mean[1, :]; color=:darkorange, linewidth=2, label=&quot;Layer III&quot;)
 lines!(ax_validation, κ2 .* tlist, mesolve_expect[1, :]; color=:black, linestyle=:dash, linewidth=2, label=&quot;mesolve&quot;)
 axislegend(ax_validation; position=:lb)
-fig_validation</code></pre><p><img src="../../assets/examples/two_mode_ideal_cat/layer3.png" alt="Ideal-cat memory-quadrature comparison for Layers I and II, Layer III, and the master equation."/></p><p>The two DiSLOU curves nearly overlap, confirming the accuracy of the method in this model.</p><p>Continue with the <a href="../two_mode_detuned_cat/">detuned model</a> for a more realistic parameter set, and three metastable states.</p><section class="footnotes is-size-7"><ul><li class="footnote" id="footnote-unraveling"><a class="tag is-link" href="#citeref-unraveling">unraveling</a>The unraveling dependence of the conditioned state in a two-photon-driven Kerr resonator was analyzed by N. Bartolo, F. Minganti, J. Lolli, and C. Ciuti, <a href="https://doi.org/10.1140/epjst/e2016-60385-8"><em>Eur. Phys. J. Spec. Top.</em> <strong>226</strong>, 2705 (2017)</a>: photon counting produces jumps between even- and odd-parity cats, whereas homodyne monitoring selects coherent states of opposite phase. The betadyne unraveling used here replaces the infinite local-oscillator strength of the homodyne limit with a finite displaced jump process, as exploited for bit-flip statistics by F. Ferrari, J. Cohen, V. Savona, and F. Minganti, <a href="https://arxiv.org/abs/2605.24100"><em>arXiv:2605.24100</em> (2026)</a>.</li></ul></section></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../kerr_resonator/">« Driven Kerr resonator</a><a class="docs-footer-nextpage" href="../two_mode_detuned_cat/">Two-mode detuned cat »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Saturday 26 September 2026 17:40">Saturday 26 September 2026</span>. Using Julia version 1.13.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+fig_validation</code></pre><p><img src="../../assets/examples/two_mode_ideal_cat/layer3.png" alt="Ideal-cat memory-quadrature comparison for Layers I and II, Layer III, and the master equation."/></p><p>The two DiSLOU curves nearly overlap, confirming the accuracy of the method in this model.</p><p>Continue with the <a href="../two_mode_detuned_cat/">detuned model</a> for a more realistic parameter set, and three metastable states.</p><section class="footnotes is-size-7"><ul><li class="footnote" id="footnote-unraveling"><a class="tag is-link" href="#citeref-unraveling">unraveling</a>The unraveling dependence of the conditioned state in a two-photon-driven Kerr resonator was analyzed by N. Bartolo, F. Minganti, J. Lolli, and C. Ciuti, <a href="https://doi.org/10.1140/epjst/e2016-60385-8"><em>Eur. Phys. J. Spec. Top.</em> <strong>226</strong>, 2705 (2017)</a>: photon counting produces jumps between even- and odd-parity cats, whereas homodyne monitoring selects coherent states of opposite phase. The betadyne unraveling used here replaces the infinite local-oscillator strength of the homodyne limit with a finite displaced jump process, as exploited for bit-flip statistics by F. Ferrari, J. Cohen, V. Savona, and F. Minganti, <a href="https://arxiv.org/abs/2605.24100"><em>arXiv:2605.24100</em> (2026)</a>.</li></ul></section></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../kerr_resonator/">« Driven Kerr resonator</a><a class="docs-footer-nextpage" href="../two_mode_detuned_cat/">Two-mode detuned cat »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Wednesday 30 September 2026 09:34">Wednesday 30 September 2026</span>. Using Julia version 1.13.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

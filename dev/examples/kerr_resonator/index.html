@@ -8,6 +8,7 @@ Pkg.instantiate()</code></pre><h2 id="Load-the-packages"><a class="docs-heading-
 using Clustering
 using DiSLOUTrajectories
 using QuantumToolbox
+using Random
 import QuantumCumulants</code></pre><h2 id="Define-the-Kerr-model"><a class="docs-heading-anchor" href="#Define-the-Kerr-model">Define the Kerr model</a><a id="Define-the-Kerr-model-1"></a><a class="docs-heading-anchor-permalink" href="#Define-the-Kerr-model" title="Permalink"></a></h2><p>The rotating-frame Hamiltonian and physical collapse operator are</p><p class="math-container">\[H=-\Delta a^\dagger a+\frac{K}{2}a^{\dagger 2}a^2
   +i(\varepsilon a^\dagger-\varepsilon^*a),
 \qquad C=\sqrt{\kappa}\,a.\]</p><p>Use a Fock cutoff of <span>$N=190$</span> and the bistable drive <span>$\varepsilon=22.217$</span>. With <span>$\kappa=1$</span>, the time values below also represent <span>$\kappa t$</span>. Define the model as functions so the same expressions work with the symbolic mode used for semiclassical discovery and with <code>QuantumToolbox</code>&#39;s objects.</p><pre><code class="language-julia hljs">N = 190
@@ -47,8 +48,7 @@ Z = sc.shifts
     dbscan_radius=1.5,
     min_neighbors=10,
     min_weight=0.02,
-    seed=1,
-    ensemblealg=:threads,
+    rng=Xoshiro(1),
 )
 
 preflight_positions = vec(trajectory_gauges.diagnostics.terminal_means)
@@ -75,7 +75,7 @@ scatter!(ax_gauges, real.(semiclassical_points), imag.(semiclassical_points);
     marker=:xcross, markersize=20, color=:red, strokewidth=3,
     label=&quot;Semiclassical solutions&quot;)
 axislegend(ax_gauges; position=:lt)
-fig_gauges</code></pre><p><img src="../../assets/examples/kerr_resonator/gauge-discovery.png" alt="Trajectory endpoints and discovered centers in the Kerr resonator complex-amplitude plane."/></p><p>The two endpoint clusters identify the dim and bright branches. Compare their centers with the stable semiclassical roots: finite pilot trajectories and quantum fluctuations need not give exactly the same centers but in this case they are very close.</p><h2 id="Evolve-the-ensemble-and-a-reference-solution"><a class="docs-heading-anchor" href="#Evolve-the-ensemble-and-a-reference-solution">Evolve the ensemble and a reference solution</a><a id="Evolve-the-ensemble-and-a-reference-solution-1"></a><a class="docs-heading-anchor-permalink" href="#Evolve-the-ensemble-and-a-reference-solution" title="Permalink"></a></h2><p>First use <code>mesolve</code> for the deterministic master-equation reference, then <code>dislou_solve</code> for 512 trajectories with Layers I and II. Both receive the same physical <code>H</code>, <code>c_ops</code>, initial state, and photon-number observable. Do not shift the physical operators yourself: DiSLOU applies the gauge transformation.</p><p>Save ensemble states at three times and retain individual trajectories so we can inspect their observables and Wigner functions below.</p><pre><code class="language-julia hljs">tlist = collect(range(0.0, 5.0; length=201))
+fig_gauges</code></pre><p><img src="../../assets/examples/kerr_resonator/gauge-discovery.png" alt="Trajectory endpoints and discovered centers in the Kerr resonator complex-amplitude plane."/></p><p>The two endpoint clusters identify the dim and bright branches. Compare their centers with the stable semiclassical roots: finite pilot trajectories and quantum fluctuations need not give exactly the same centers but in this case they are very close.</p><h2 id="Evolve-the-ensemble-and-a-reference-solution"><a class="docs-heading-anchor" href="#Evolve-the-ensemble-and-a-reference-solution">Evolve the ensemble and a reference solution</a><a id="Evolve-the-ensemble-and-a-reference-solution-1"></a><a class="docs-heading-anchor-permalink" href="#Evolve-the-ensemble-and-a-reference-solution" title="Permalink"></a></h2><p>First use <code>mesolve</code> for the deterministic master-equation reference, then <code>dislou_solve</code> for 512 trajectories with Layers I and II. Both receive the same physical <code>H</code>, <code>c_ops</code>, initial state, and photon-number observable. Do not shift the physical operators yourself: DiSLOU applies the gauge transformation.</p><p>Save the states at three times and keep every trajectory (<code>keep_runs_results</code>), so that we can inspect individual observables and Wigner functions below. The last line counts the quantum jumps of all trajectories.</p><pre><code class="language-julia hljs">tlist = collect(range(0.0, 5.0; length=201))
 snapshot_times = [0.0, 2.5, 5.0]
 ntraj = 512
 ensemble_seed = 20260829
@@ -91,13 +91,12 @@ sol = dislou_solve(H, ψ0, tlist, c_ops;
     e_ops=[n_op],
     gauge_set=Z,
     ntraj=ntraj,
-    ensemblealg=:threads,
-    seed=ensemble_seed,
+    rng=Xoshiro(ensemble_seed),
     saveat=snapshot_times,
-    save_trajectories=true,
-    save_final_states=true,
-)</code></pre><pre><code class="language-text hljs">DiSLOUSolution(ntraj=512, Ne=1, Nt=201, total_jumps=36950)</code></pre><h3 id="Read-the-photon-number-dynamics"><a class="docs-heading-anchor" href="#Read-the-photon-number-dynamics">Read the photon-number dynamics</a><a id="Read-the-photon-number-dynamics-1"></a><a class="docs-heading-anchor-permalink" href="#Read-the-photon-number-dynamics" title="Permalink"></a></h3><p><code>expect_mean(sol)</code> and <code>expect_sem(sol)</code> return the ensemble mean and its standard error for the first observable, here photon number. Plot those against <code>mesolve</code>, then show six individual trajectories below. The shaded band describes uncertainty in the ensemble mean.</p><pre><code class="language-julia hljs">n_mean = real.(expect_mean(sol))
-n_sem = expect_sem(sol)
+    keep_runs_results=Val(true),
+)
+sum(length, sol.col_times)</code></pre><pre><code class="language-text hljs">38946</code></pre><h3 id="Read-the-photon-number-dynamics"><a class="docs-heading-anchor" href="#Read-the-photon-number-dynamics">Read the photon-number dynamics</a><a id="Read-the-photon-number-dynamics-1"></a><a class="docs-heading-anchor-permalink" href="#Read-the-photon-number-dynamics" title="Permalink"></a></h3><p><code>average_expect(sol)</code> averages the trajectories, and <code>std_expect(sol)</code> gives their standard deviation; divided by <span>$\sqrt{N_{\rm traj}}$</span> it is the standard error of the mean. Plot the photon number against <code>mesolve</code>, then show six individual trajectories, <code>sol.expect[1, trajectory, :]</code>, below. The shaded band describes the uncertainty of the ensemble mean.</p><pre><code class="language-julia hljs">n_mean = real.(average_expect(sol)[1, :])
+n_sem = std_expect(sol)[1, :] ./ sqrt(ntraj)
 n_mesolve = real.(mesolve_sol.expect[1, :])
 selected_trajectories = 1:6
 
@@ -115,7 +114,7 @@ axislegend(ax_mean; position=:lt)
 ax_traj = Axis(fig_n[2, 1]; xlabel=&quot;κt&quot;, ylabel=&quot;⟨a†a⟩&quot;,
     title=&quot;Six individual trajectories&quot;)
 for trajectory in selected_trajectories
-    lines!(ax_traj, tlist, real.(sol.trajectory_expect[1, trajectory, :]);
+    lines!(ax_traj, tlist, real.(sol.expect[1, trajectory, :]);
         label=&quot;trajectory $trajectory&quot;)
 end
 axislegend(ax_traj; position=:rt, nbanks=2)
@@ -125,10 +124,10 @@ time_index = length(snapshot_times)
 scaled_snapshot_time = κ * snapshot_times[time_index]
 
 wigner_states = (
-    sol.states[time_index],
-    sol.trajectory_states[1, time_index],
-    sol.trajectory_states[2, time_index],
-    sol.trajectory_states[3, time_index],
+    average_states(sol)[time_index],
+    sol.states[1, time_index],
+    sol.states[2, time_index],
+    sol.states[3, time_index],
 )
 wigner_values = map(
     state -&gt; wigner(state, xvec, yvec),
@@ -166,13 +165,13 @@ fig_w</code></pre><p><img src="../../assets/examples/kerr_resonator/wigner.png" 
     e_ops=[n_op],
     gauge_set=Z,
     ntraj=ntraj,
-    ensemblealg=:threads,
-    seed=ensemble_seed,
-    layer3=true,
+    rng=Xoshiro(ensemble_seed),
     layer3_sizes=[20, 60],
     residual_tolerance=1e-4,
-)</code></pre><pre><code class="language-text hljs">DiSLOUSolution(ntraj=512, Ne=1, Nt=201, total_jumps=40523)</code></pre><p>Overlay the Layer III result with Layers I and II and <code>mesolve</code>, keeping the standard-error bands for both ensembles.</p><pre><code class="language-julia hljs">n_layer3 = real.(expect_mean(layer3_sol))
-n_layer3_sem = expect_sem(layer3_sol)
+    keep_runs_results=Val(true),
+)
+sum(length, layer3_sol.col_times)</code></pre><pre><code class="language-text hljs">38946</code></pre><p>Overlay the Layer III result with Layers I and II and <code>mesolve</code>, keeping the standard-error bands for both ensembles.</p><pre><code class="language-julia hljs">n_layer3 = real.(average_expect(layer3_sol)[1, :])
+n_layer3_sem = std_expect(layer3_sol)[1, :] ./ sqrt(ntraj)
 
 fig_validation = Figure(size=(900, 450))
 ax_validation = Axis(fig_validation[1, 1];
@@ -190,4 +189,4 @@ lines!(ax_validation, tlist, n_layer3;
 lines!(ax_validation, tlist, n_mesolve;
     color=:black, linestyle=:dash, linewidth=2, label=&quot;mesolve&quot;)
 axislegend(ax_validation; position=:lt)
-fig_validation</code></pre><p><img src="../../assets/examples/kerr_resonator/layer3.png" alt="Kerr photon-number comparison for Layers I and II, Layer III, and the master equation."/></p><p>The comparison confirms that the reduced and full-space ensemble curves track the same reference dynamics.</p><p>Continue with the <a href="../two_mode_ideal_cat/">two-mode ideal cat</a> to apply the same workflow to multiple modes and jump operators.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Overview</a><a class="docs-footer-nextpage" href="../two_mode_ideal_cat/">Two-mode ideal cat »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Saturday 26 September 2026 17:40">Saturday 26 September 2026</span>. Using Julia version 1.13.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+fig_validation</code></pre><p><img src="../../assets/examples/kerr_resonator/layer3.png" alt="Kerr photon-number comparison for Layers I and II, Layer III, and the master equation."/></p><p>The comparison confirms that the reduced and full-space ensemble curves track the same reference dynamics.</p><p>Continue with the <a href="../two_mode_ideal_cat/">two-mode ideal cat</a> to apply the same workflow to multiple modes and jump operators.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Overview</a><a class="docs-footer-nextpage" href="../two_mode_ideal_cat/">Two-mode ideal cat »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Wednesday 30 September 2026 09:34">Wednesday 30 September 2026</span>. Using Julia version 1.13.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
