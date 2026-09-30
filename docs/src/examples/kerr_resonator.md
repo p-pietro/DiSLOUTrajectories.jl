@@ -36,6 +36,7 @@ using CairoMakie
 using Clustering
 using DiSLOUTrajectories
 using QuantumToolbox
+using Random
 import QuantumCumulants
 ```
 
@@ -130,8 +131,7 @@ trajectory_gauges = discover_gauges(H, c_ops;
     dbscan_radius=1.5,
     min_neighbors=10,
     min_weight=0.02,
-    seed=1,
-    ensemblealg=:threads,
+    rng=Xoshiro(1),
 )
 
 preflight_positions = vec(trajectory_gauges.diagnostics.terminal_means)
@@ -185,8 +185,9 @@ First use `mesolve` for the deterministic master-equation reference, then
 physical `H`, `c_ops`, initial state, and photon-number observable. Do not shift
 the physical operators yourself: DiSLOU applies the gauge transformation.
 
-Save ensemble states at three times and retain individual trajectories so we
-can inspect their observables and Wigner functions below.
+Save the states at three times and keep every trajectory
+(`keep_runs_results`), so that we can inspect individual observables and Wigner
+functions below. The last line counts the quantum jumps of all trajectories.
 
 ```julia
 tlist = collect(range(0.0, 5.0; length=201))
@@ -205,28 +206,28 @@ sol = dislou_solve(H, ψ0, tlist, c_ops;
     e_ops=[n_op],
     gauge_set=Z,
     ntraj=ntraj,
-    ensemblealg=:threads,
-    seed=ensemble_seed,
+    rng=Xoshiro(ensemble_seed),
     saveat=snapshot_times,
-    save_trajectories=true,
-    save_final_states=true,
+    keep_runs_results=Val(true),
 )
+sum(length, sol.col_times)
 ```
 
 ```text
-DiSLOUSolution(ntraj=512, Ne=1, Nt=201, total_jumps=36950)
+38946
 ```
 
 ### Read the photon-number dynamics
 
-`expect_mean(sol)` and `expect_sem(sol)` return the ensemble mean and its
-standard error for the first observable, here photon number. Plot those
-against `mesolve`, then show six individual trajectories below. The shaded
-band describes uncertainty in the ensemble mean.
+`average_expect(sol)` averages the trajectories, and `std_expect(sol)` gives
+their standard deviation; divided by ``\sqrt{N_{\rm traj}}`` it is the standard
+error of the mean. Plot the photon number against `mesolve`, then show six
+individual trajectories, `sol.expect[1, trajectory, :]`, below. The shaded band
+describes the uncertainty of the ensemble mean.
 
 ```julia
-n_mean = real.(expect_mean(sol))
-n_sem = expect_sem(sol)
+n_mean = real.(average_expect(sol)[1, :])
+n_sem = std_expect(sol)[1, :] ./ sqrt(ntraj)
 n_mesolve = real.(mesolve_sol.expect[1, :])
 selected_trajectories = 1:6
 
@@ -244,7 +245,7 @@ axislegend(ax_mean; position=:lt)
 ax_traj = Axis(fig_n[2, 1]; xlabel="κt", ylabel="⟨a†a⟩",
     title="Six individual trajectories")
 for trajectory in selected_trajectories
-    lines!(ax_traj, tlist, real.(sol.trajectory_expect[1, trajectory, :]);
+    lines!(ax_traj, tlist, real.(sol.expect[1, trajectory, :]);
         label="trajectory $trajectory")
 end
 axislegend(ax_traj; position=:rt, nbanks=2)
@@ -270,10 +271,10 @@ time_index = length(snapshot_times)
 scaled_snapshot_time = κ * snapshot_times[time_index]
 
 wigner_states = (
-    sol.states[time_index],
-    sol.trajectory_states[1, time_index],
-    sol.trajectory_states[2, time_index],
-    sol.trajectory_states[3, time_index],
+    average_states(sol)[time_index],
+    sol.states[1, time_index],
+    sol.states[2, time_index],
+    sol.states[3, time_index],
 )
 wigner_values = map(
     state -> wigner(state, xvec, yvec),
@@ -332,24 +333,24 @@ layer3_sol = dislou_solve(H, ψ0, tlist, c_ops;
     e_ops=[n_op],
     gauge_set=Z,
     ntraj=ntraj,
-    ensemblealg=:threads,
-    seed=ensemble_seed,
-    layer3=true,
+    rng=Xoshiro(ensemble_seed),
     layer3_sizes=[20, 60],
     residual_tolerance=1e-4,
+    keep_runs_results=Val(true),
 )
+sum(length, layer3_sol.col_times)
 ```
 
 ```text
-DiSLOUSolution(ntraj=512, Ne=1, Nt=201, total_jumps=40523)
+38946
 ```
 
 Overlay the Layer III result with Layers I and II and `mesolve`, keeping
 the standard-error bands for both ensembles.
 
 ```julia
-n_layer3 = real.(expect_mean(layer3_sol))
-n_layer3_sem = expect_sem(layer3_sol)
+n_layer3 = real.(average_expect(layer3_sol)[1, :])
+n_layer3_sem = std_expect(layer3_sol)[1, :] ./ sqrt(ntraj)
 
 fig_validation = Figure(size=(900, 450))
 ax_validation = Axis(fig_validation[1, 1];

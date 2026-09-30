@@ -243,7 +243,7 @@ function _symbolic_meanfield_drift(hamiltonian, collapse_operators)
     return u -> problem.f(u, problem.p, 0.0)
 end
 
-# α_j^(g) roots and max Re λℓ[J] (Eqs. A.2–A.5).
+# α_j^(g) roots (Eqs. A.2–A.3) and max Re λℓ[J] (Eq. A.4).
 function semiclassical_fixed_points(hamiltonian, collapse_operators; limits)
     length(limits) == 2 || throw(ArgumentError("limits must contain two occupation bounds"))
     bounds = (Float64(limits[1]), Float64(limits[2]))

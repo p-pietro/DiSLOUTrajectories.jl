@@ -8,15 +8,16 @@ DiSLOUTrajectories.jl depends directly on or optionally integrates with the foll
 | -------------------------------------- | ------------ |
 | Distributed (Julia standard library)   | MIT          |
 | LinearAlgebra (Julia standard library) | MIT          |
+| OrdinaryDiffEqCore.jl                  | MIT          |
 | QuantumToolbox.jl                      | BSD-3-Clause |
 | Random (Julia standard library)        | MIT          |
-| SparseArrays (Julia standard library)  | MIT          |
+| SciMLBase.jl                           | MIT          |
+| SciMLOperators.jl                      | MIT          |
 
 ## Optional dependencies
 
 | Project                             | License |
 | ----------------------------------- | ------- |
-| CUDA.jl                             | MIT     |
 | Clustering.jl                       | MIT     |
 | Distances.jl                        | MIT     |
 | ForwardDiff.jl                      | MIT     |

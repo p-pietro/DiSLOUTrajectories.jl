@@ -9,17 +9,11 @@ using DiSLOUTrajectories
     @test "Distances" ∉ loaded
     @test "QuantumCumulants" ∉ loaded
     @test "ModelingToolkitBase" ∉ loaded
-    for (method, hint) in (
+    for (method, message) in (
             :trajectories => "using Clustering",
             :semiclassical => "using QuantumCumulants",
-            :unknown => "Unsupported gauge discovery method :unknown",
+            :unknown => "unknown gauge discovery method :unknown",
         )
-        err = try
-            discover_gauges(nothing, []; method)
-        catch caught
-            caught
-        end
-        @test err isa MethodError
-        @test occursin(hint, sprint(showerror, err))
+        @test_throws message discover_gauges(nothing, []; method)
     end
 end
