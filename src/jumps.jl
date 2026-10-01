@@ -39,12 +39,19 @@ end
 
 # ⟨ψ|O|ψ⟩ / ⟨ψ|ψ⟩, or q† (Q†OQ) q / ‖q‖² from the coordinates q = Q†ψ.
 function QuantumToolbox._mcsolve_expect!(expvals, e_ops, u, integrator::_GaugeIntegrator)
+    # Inside a step, the dense output may already follow a later jump of that step.
+    u === integrator.u || throw(
+        ArgumentError(
+            "GaugeEigenExponential computes expectation values only at step ends: pass the \
+            times of `tlist` as `tstops`"
+        )
+    )
     (; alg, cache) = integrator
     cache.coordinates || return expvals .= dot.(Ref(u), e_ops, Ref(u)) ./ real(dot(u, u))
     slow = alg.slow[cache.gauge]
     n = length(slow.basis)
     q = view(u, 1:n)
-    tmp = view(cache.c_scratch, 1:n)   # `u` can be `cache.tmp`, lent to the saving callback
+    tmp = view(cache.c_scratch, 1:n)
     norm2 = real(dot(q, q))
     for k in eachindex(expvals, slow.e_ops)
         expvals[k] = dot(q, mul!(tmp, slow.e_ops[k], q)) / norm2

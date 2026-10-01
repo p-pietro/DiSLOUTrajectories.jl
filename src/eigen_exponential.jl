@@ -116,9 +116,9 @@ follow those of `H` and `c_ops`: with GPU operators, for example, the decomposit
 and the propagation run on the GPU.
 
 Pass it to `mcsolve` together with the same `H` and `c_ops`, which it also uses for
-the jumps. Without stops, a step spans the time until the next jump or the end, which
-is exact but makes each jump search longer. Stopping at the times of `tlist` bounds
-the searched interval:
+the jumps, and with the times of `tlist` as stops. `mcsolve` computes the expectation
+values at these times after the jumps of their step, which can change the basis of the
+dense output, so they must be step ends. The stops also shorten the search for each jump:
 
 ```julia
 mcsolve(H, ψ0, tlist, c_ops; alg = GaugeEigenExponential(H, c_ops), tstops = tlist)

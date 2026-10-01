@@ -130,10 +130,9 @@ function dislou_solve(
     # The norm decreases monotonically between jumps, so checking the step ends is
     # enough to detect a jump (the default only from QuantumToolbox 0.49).
     jump_callback = ContinuousLindbladJumpCallback(interp_points = 0)
-    # Exact steps can span the whole time range. Stopping at the times of `tlist` does
-    # not change the results: it bounds the interval searched for each jump, so the
-    # search needs fewer evaluations, and the results are saved at step ends. With Layer
-    # III, the times of `saveat` are stops too: only step ends can store the full state.
+    # The expectation values are computed at the times of `tlist` after the jumps of their
+    # step, so these times must be step ends. The stops also shorten the jump search. With
+    # Layer III, the times of `saveat` are stops too: only step ends store the full state.
     saveat = get(kwargs, :saveat, Float64[])
     saveat_stops = saveat isa Number ? (first(tlist):saveat:last(tlist)) : saveat
     stops = isempty(alg.slow) ? tlist : vcat(tlist, saveat_stops)
