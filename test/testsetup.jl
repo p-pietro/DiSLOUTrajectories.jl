@@ -46,8 +46,8 @@ function thrown(f)
     return nothing
 end
 
-# Record the gauge (and the Layer III flag) of each trajectory after every step.
-# The callback runs after the gauge router; use it with `EnsembleSerial()`.
+# Record the gauge (and the Layer III flag) of each trajectory after every step. Use it
+# with `EnsembleSerial()`.
 function gauge_recorder()
     gauges = Int[]
     reduced = Bool[]

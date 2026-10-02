@@ -64,6 +64,11 @@ Hamiltonian without changing the master equation (Eq. 9):
   half of the digits can be lost, and throws when an effective Hamiltonian is not
   diagonalizable. Layer III replaces the state by its projection after each accepted
   jump, an error below `residual_tolerance`.
+- On the ``m`` slow modes of Layer III, a trajectory stores its state as its coordinates
+  on these modes, followed by zeros, except at the times where the state is saved. The
+  steps, jumps and expectation values then take ``O(m^2)`` operations instead of
+  ``O(N m)``. A callback that reads `integrator.u`, or `integrator(t)`, gets these
+  coordinates.
 - Each gauge is diagonalized once, which takes ``O(N^3)`` time and ``O(N^2)`` memory for
   an ``N``-dimensional Hilbert space. With `e_ops = nothing`, `sol.expect` is an empty
   matrix instead of `nothing`.
@@ -104,7 +109,6 @@ function dislou_solve(
         layer3_sizes = nothing,
         residual_tolerance::Real = 1.0e-3,
         e_ops = nothing,
-        callback = nothing,
         tstops = Float64[],
         kwargs...,
     )
@@ -115,38 +119,27 @@ function dislou_solve(
         haskey(kwargs, key) && throw(ArgumentError("dislou_solve sets `$key` itself"))
     end
 
-    shifts = _gauge_shifts(gauge_set, length(c_ops))
-    gauges = [_shifted_operators(H, c_ops, shifts[:, g]) for g in axes(shifts, 2)]
-    alg = GaugeEigenExponential(gauges; layer3_sizes)
-
-    # Initial gauge (paper Eq. 12) and, with Layer III, projection of the initial state.
-    # The state has the array type and precision of the eigenbases.
-    ψ = eltype(first(alg.bases).λ).(to_dense(ψ0.data))
-    C = [op.data for op in c_ops]
-    g0 = argmin(_gauge_activities!(zeros(size(shifts, 2)), C, shifts, ψ, similar(ψ)))
-    reduced0 = !isempty(alg.reduced_bases) &&
-        _project!(ψ, alg.reduced_bases[g0], residual_tolerance, similar(ψ), similar(ψ))
-
-    # Jump operators of each gauge, built as QuantumToolbox builds those of `mcsolve`
-    # (from version 0.47.2; earlier versions store plain matrices).
-    jump_ops = [map(op -> get_data(cache_operator(QobjEvo(op), ψ)), Cg) for (_, Cg) in gauges]
-    router = GaugeRouter(C, shifts, jump_ops, float(hysteresis), float(residual_tolerance), g0, reduced0)
-    router_callback = _router_callback(router)
-    callback = callback === nothing ? router_callback : CallbackSet(router_callback, callback)
-
     # QuantumToolbox's mcsolve fails when `e_ops = nothing` comes with an extra callback;
     # an empty list of observables gives the same result.
     e_ops = something(e_ops, typeof(H)[])
+    alg = GaugeEigenExponential(
+        H, c_ops, _gauge_shifts(gauge_set, length(c_ops));
+        hysteresis, layer3_sizes, residual_tolerance, e_ops = [op.data for op in e_ops]
+    )
 
     # The norm decreases monotonically between jumps, so checking the step ends is
     # enough to detect a jump (the default only from QuantumToolbox 0.49).
     jump_callback = ContinuousLindbladJumpCallback(interp_points = 0)
-    # Exact steps can span the whole time range. Stopping at the times of `tlist` does
-    # not change the results: it bounds the interval searched for each jump, so the
-    # search needs fewer evaluations, and the results are saved at step ends.
-    tstops = sort!(unique!(vcat(collect(Float64, tlist), tstops)))
+    # The expectation values are computed at the times of `tlist` after the jumps of their
+    # step, so these times must be step ends. The stops also shorten the jump search. With
+    # Layer III, the times of `saveat` are stops too: only step ends store the full state.
+    saveat = get(kwargs, :saveat, Float64[])
+    saveat_stops = saveat isa Number ? (first(tlist):saveat:last(tlist)) : saveat
+    stops = isempty(alg.slow) ? tlist : vcat(tlist, saveat_stops)
+    tstops = sort!(unique!(vcat(collect(Float64, stops), tstops)))
 
-    H0, C0 = gauges[g0]
-    ψ0 = QuantumObject(ψ; type = Ket(), dims = ψ0.dimensions)
-    return mcsolve(H0, ψ0, tlist, C0; alg, e_ops, callback, jump_callback, tstops, kwargs...)
+    # The state has the array type and precision of the eigenbases.
+    T = eltype(first(alg.bases).λ)
+    ψ0 = QuantumObject(T.(to_dense(ψ0.data)); type = Ket(), dims = ψ0.dimensions)
+    return mcsolve(H, ψ0, tlist, c_ops; alg, e_ops, jump_callback, tstops, kwargs...)
 end
