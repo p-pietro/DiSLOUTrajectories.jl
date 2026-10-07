@@ -5,61 +5,31 @@ on:
     branches: [main]
     tags: ['*']
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: docs-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel intermediate builds only on pull requests.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 permissions:
   contents: read
 
 jobs:
-  build:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+  docs:
+    name: Documentation
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      actions: write   # lets julia-actions/cache delete its old caches
+      contents: write  # deployment to gh-pages
+      statuses: write
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
       - uses: julia-actions/cache@v3
-      - name: Develop checkout in documentation environment
-        run: |
-          julia --project=docs -e '
-            using Pkg
-            Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.instantiate()
-          '
-      - name: Build documentation
-        run: julia --project=docs --startup-file=no docs/make.jl
-
-  deploy:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    concurrency:
-      group: gh-pages
-      cancel-in-progress: false
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: '1'
-      - uses: julia-actions/cache@v3
-      - name: Develop checkout in documentation environment
-        run: |
-          julia --project=docs -e '
-            using Pkg
-            Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.instantiate()
-          '
-      - name: Build and deploy documentation
+      # Builds the manual on every event; Documenter deploys it only from main and tags.
+      - uses: julia-actions/julia-docdeploy@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOCUMENTER_DEPLOY: 'true'
-        run: julia --project=docs --startup-file=no docs/make.jl

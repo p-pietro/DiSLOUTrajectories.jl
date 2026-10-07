@@ -1,5 +1,4 @@
 Manifest.toml
-/junit.xml
 .DS_Store
 docs/build/
 docs/node_modules/
@@ -11,3 +10,6 @@ logs/
 .tokensave/
 .worktrees/
 .vscode/
+*.jl.cov
+*.jl.*.cov
+*.jl.mem

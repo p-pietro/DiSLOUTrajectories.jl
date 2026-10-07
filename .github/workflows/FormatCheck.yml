@@ -4,12 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: format-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel intermediate builds only on pull requests.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 permissions:
   contents: read
@@ -19,7 +19,7 @@ jobs:
     name: Runic
     runs-on: ubuntu-latest
     permissions:
-      actions: write
+      actions: write   # lets julia-actions/cache delete its old caches
       contents: read
     steps:
       - uses: actions/checkout@v7

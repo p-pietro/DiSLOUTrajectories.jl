@@ -70,10 +70,9 @@ makedocs(;
     ],
 )
 
-if get(ENV, "DOCUMENTER_DEPLOY", "false") == "true"
-    Documenter.deploydocs(;
-        repo = "github.com/$(repository).git",
-        devbranch = "main",
-        push_preview = false,
-    )
-end
+# Deploys only from pushes to main and from tags, so local builds and pull requests skip it.
+deploydocs(;
+    repo = "github.com/$(repository).git",
+    devbranch = "main",
+    push_preview = false,
+)
