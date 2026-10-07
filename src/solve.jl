@@ -52,10 +52,11 @@ Hamiltonian without changing the master equation (Eq. 9):
 
 # Notes
 
-- With Layer III, a user `callback` that changes the state while a reduced basis is
-  active has its components outside that basis discarded at the next step. State-changing
-  callbacks that leave the active slow subspace are unsupported; disable Layer III
-  with `layer3_sizes = nothing` when using them.
+- After a user `callback` changes the state, the next step chooses the gauge and, with
+  Layer III, the basis again from the new state. With Layer III, such a callback must
+  act at times where the state is saved, for example times of `saveat`: elsewhere
+  `integrator.u` can hold coordinates on the slow modes instead of the state (see below).
+  Otherwise, disable Layer III with `layer3_sizes = nothing`.
 - `dislou_solve` sets the `alg` and `jump_callback` of `mcsolve` itself.
 - Jump records (`col_times`, `col_which`) refer to the shifted operators of the gauge
   that was active at each jump.
@@ -128,7 +129,7 @@ function dislou_solve(
     )
 
     # The norm decreases monotonically between jumps, so checking the step ends is
-    # enough to detect a jump (the default only from QuantumToolbox 0.49).
+    # enough to detect a jump.
     jump_callback = ContinuousLindbladJumpCallback(interp_points = 0)
     # The expectation values are computed at the times of `tlist` after the jumps of their
     # step, so these times must be step ends. The stops also shorten the jump search. With
