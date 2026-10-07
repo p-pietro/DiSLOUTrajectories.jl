@@ -73,9 +73,10 @@ the semiclassical method must be selected explicitly.
 - `method::Symbol`: Set to `:trajectories` (the default).
 - `mode_ops`: Nonempty collection of bosonic annihilation operators, embedded
   in the full tensor-product Hilbert space. Each operator must have the same
-  dimensions as `H`; their order defines the rows of the returned centers.
-- `mode_dims`: One integer Hilbert-space truncation dimension, at least `2`,
-  per mode, in tensor-product order.
+  dimensions as `H`, and `mode_ops[j]` must act on the `j`-th tensor factor. Their
+  order defines the rows of the returned centers.
+- `mode_dims`: One integer Hilbert-space truncation dimension per mode, in
+  tensor-product order. Together they must span the whole space of `H`.
 - `discovery_time`: Positive, finite duration of each preliminary trajectory,
   which starts at time zero.
 - `seed_radii`: One finite, nonnegative coherent-amplitude radius per mode.
@@ -113,15 +114,17 @@ the semiclassical method must be selected explicitly.
 
 ## Semiclassical discovery
 
-- `H`, `c_ops`, `mode_ops`, `mode_dims`: As for trajectory discovery, with the mode
-  operators in the order of the tensor factors.
+- `H`, `c_ops`, `mode_ops`, `mode_dims`: As for trajectory discovery. The collapse
+  operators may be nonlinear in the modes, such as `a^2` or `a' * a`.
 - `method::Symbol`: Set to `:semiclassical`.
 - `limits`: Nonempty tuple or vector of positive, finite occupation bounds,
   one per mode. Accepted fixed points satisfy `abs2(α[m]) ≤ limits[m]` up to
   numerical tolerance. These bounds define the search region, and they should
-  stay a few standard deviations `√limits[m]` below `mode_dims[m]`.
+  stay a few standard deviations `√limits[m]` below `mode_dims[m]`; operators of
+  higher degree in the modes need more margin.
 - `ensemblealg`: How the Newton solves from the grid of starting points run:
   `EnsembleThreads()` (default), `EnsembleSerial()`, or `EnsembleDistributed()`.
+  Distributed execution requires worker processes with DiSLOUTrajectories loaded.
 
 # Notes
 
@@ -131,9 +134,11 @@ the semiclassical method must be selected explicitly.
   including discarded samples in the denominator. Their sum can be less than
   one. Clusters are ordered by decreasing weight, then by their centers.
   Noise points and samples from discarded clusters receive label `0`.
-- Stability of the semiclassical solution is determined
-  from the real mean-field Jacobian. A finite multistart search can miss roots,
-  and its cost grows rapidly with the number of modes.
+- Stability of the semiclassical solution is determined from the real
+  mean-field Jacobian. The search starts from a regular grid of `5^(2m)` points
+  for `m` modes, so it can miss roots and its cost grows rapidly with the number
+  of modes. It uses the truncated matrices of `H` and `c_ops`, which reproduce
+  the mean-field equations only while the occupations stay well below the cutoffs.
 - Discovery raises an `ArgumentError` if no trajectory cluster or stable
   semiclassical fixed point is retained.
 
@@ -146,8 +151,8 @@ the semiclassical method must be selected explicitly.
   - `method::Symbol`: `:trajectories` or `:semiclassical`.
   - `centers::Matrix{ComplexF64}`: `Nm × Ng` cluster-mean mode amplitudes
     or stable fixed-point amplitudes.
-  - `weights::Vector{Float64}`: `Ng` cluster population fractions or uniform
-    semiclassical weights, as described above.
+  - `weights::Vector{Float64}`: `Ng` cluster population fractions, as described
+    above, or the uniform weights `1/Ng` of the semiclassical method.
   - `diagnostics::NamedTuple`: Method-specific discovery data described below.
 
 For trajectory discovery, `diagnostics` contains:
@@ -182,8 +187,8 @@ For semiclassical discovery, `diagnostics` contains:
 - `rejected`: Matrix of the unstable fixed points excluded from `centers`.
 - `stable`: Boolean vector of length `Ng`, with every entry `true`.
 """
-discover_gauges(model, collapse_operators; method::Symbol = :trajectories, kwargs...) =
-    _discover_gauges(Val(method), model, collapse_operators; kwargs...)
+discover_gauges(H, c_ops; method::Symbol = :trajectories, kwargs...) =
+    _discover_gauges(Val(method), H, c_ops; kwargs...)
 
 # Checks that H, the collapse operators and the bosonic mode operators (one per tensor
 # factor, in order) live in the tensor product of Fock spaces of dimensions `mode_dims`.
