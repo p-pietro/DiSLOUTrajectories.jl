@@ -17,6 +17,7 @@ include("fixtures/two_mode_diamond.jl")
         @test result.weights == [0.5, 0.5]
         @test length(result.diagnostics.stability) == size(result.diagnostics.roots, 2) == 3
         @test all(result.diagnostics.stable)
+        @test semiclassical(ensemblealg = EnsembleSerial()).diagnostics.roots == result.diagnostics.roots
 
         sol = dislou_solve(
             kerr.H, kerr.ψ0, [0.0, 0.5], kerr.c_ops; gauge_set = result, ntraj = 2, rng = Xoshiro(5), quiet...

@@ -120,6 +120,8 @@ the semiclassical method must be selected explicitly.
   one per mode. Accepted fixed points satisfy `abs2(α[m]) ≤ limits[m]` up to
   numerical tolerance. These bounds define the search region, and they should
   stay a few standard deviations `√limits[m]` below `mode_dims[m]`.
+- `ensemblealg`: How the Newton solves from the grid of starting points run:
+  `EnsembleThreads()` (default), `EnsembleSerial()`, or `EnsembleDistributed()`.
 
 # Notes
 

@@ -29,19 +29,16 @@ include("../reporting/check.jl")
         ψ = normalize(randn(rng, ComplexF64, N))
         C = [c.data for c in c_ops]
         a = destroy(N)
-        drifts = [DiSLOUTrajectories._heisenberg_drift(a' * a, [a], a).data]
-        residual = let dims = [N], drifts = drifts
-            x -> DiSLOUTrajectories._residual(x, dims, drifts)
-        end
+        p = (; dims = [N], drifts = [DiSLOUTrajectories._heisenberg_drift(a' * a, [a], a).data])
         for (f, args) in (
                 (DiSLOUTrajectories._coordinates!, (similar(ψ), basis, ψ)),
                 (DiSLOUTrajectories._project!, (copy(ψ), basis, 1.0e-3, similar(ψ), similar(ψ))),
                 (DiSLOUTrajectories._gauge_activities!, (zeros(2), C, zeros(ComplexF64, 1, 2), ψ, similar(ψ))),
                 (DiSLOUTrajectories._dbscan, (randn(rng, 2, 20), 1.0, 3)),
-                (DiSLOUTrajectories._coherent_product, ([N], zeros(2))),
-                (DiSLOUTrajectories._residual, (zeros(2), [N], drifts)),
-                (DiSLOUTrajectories._newton_root, (residual, zeros(2))),
-                (DiSLOUTrajectories._phase_space_points, (residual, [1.0])),
+                (DiSLOUTrajectories._coherent_product, ([N], [0.1 + 0.2im])),
+                (DiSLOUTrajectories._meanfield_drift, (zeros(2), p)),
+                (DiSLOUTrajectories._stability, (zeros(2), p)),
+                (DiSLOUTrajectories._fixed_points, (p, [1.0], DiSLOUTrajectories.EnsembleSerial())),
             )
             @testset "$(nameof(f))" begin
                 JET.test_call(f, typeof.(args); target_modules = (DiSLOUTrajectories,), mode = :basic)
