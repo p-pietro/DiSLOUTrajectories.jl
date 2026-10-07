@@ -21,10 +21,12 @@
             u = integrator(integrator.cache.tmp, t)
             before = copy(u)
             s = exp(-κ * t)
+            fill!(jump.affect!.weights_mc, NaN)
             @test QuantumToolbox._mcsolve_continuous_derivative(u, t, integrator, Val(false)) ≈ κ * s rtol = 1.0e-11
             @test jump.condition.derivative(u, t, integrator) ≈
                 (logarithm ? κ : κ * s) rtol = 1.0e-11
             @test u == before
+            @test all(isnan, jump.affect!.weights_mc)   # root finding never evaluates channel weights
             @test jump.condition(u, t, integrator) < 0   # zero threshold has no crossing
 
             # Fix the threshold and locate its known crossing, even though the
@@ -54,6 +56,88 @@
         @test all(isapprox(x, y; atol = 1.0e-9) for (x, y) in zip(plain.col_times, logarithmic.col_times))
         @test plain.expect ≈ logarithmic.expect atol = 1.0e-9
         @test run(true, EnsembleThreads()).col_times == logarithmic.col_times
+    end
+
+    @testset "spectral norm-loss rate" begin
+        rng = Xoshiro(13)
+        N = 7
+        A = randn(rng, ComplexF64, N, N)
+        H = QuantumObject((A + A') / 2)
+        c_ops = [QuantumObject(randn(rng, ComplexF64, N, N) / 3) for _ in 1:2]
+        shifts = randn(rng, ComplexF64, 2, 3) / 3
+        for g in axes(shifts, 2), representation in (:full, :reduced, :saved)
+            ζ = shifts[:, g]
+            alg = GaugeEigenExponential(H, c_ops, reshape(ζ, :, 1); layer3_sizes = representation == :full ? nothing : 4)
+            basis = representation == :full ? only(alg.bases) : only(alg.slow).basis
+            ψ0 = QuantumObject(normalize(basis.Q * randn(rng, ComplexF64, length(basis))))
+            prob = mcsolveProblem(
+                H, ψ0, [0.0, 1.3], c_ops;
+                e_ops = [], saveat = Float64[], save_end = representation == :saved, jump_derivative = true
+            )
+            jump = QuantumToolbox._mc_get_jump_callback(prob.prob.kwargs[:callback])
+            prob = SciMLBase.remake(prob.prob; callback = QuantumToolbox._modify_field(jump, :initialize, (cb, u, t, integrator) -> (cb.affect!.random_n[] = 0.0; nothing)))
+            integrator = SciMLBase.init(prob, alg; save_everystep = false)
+            SciMLBase.step!(integrator)
+            @test integrator.cache.coordinates == (representation == :reduced)
+            fill!(jump.affect!.weights_mc, NaN)
+            for t in (0.0, 0.7, 1.3)
+                u = integrator(integrator.cache.tmp, t)
+                before = copy(u)
+                ψ = integrator.cache.coordinates ? basis.Q * view(u, 1:length(basis)) : u
+                rate = sum(norm((C.data + ζμ * I) * ψ)^2 for (C, ζμ) in zip(c_ops, ζ))
+                @test QuantumToolbox._mcsolve_continuous_derivative(u, t, integrator, Val(false)) ≈ rate rtol = 1.0e-10
+                @test QuantumToolbox._mcsolve_continuous_derivative(u, t, integrator, Val(true)) ≈ rate / real(dot(u, u)) rtol = 1.0e-10
+                @test u == before
+                @test all(isnan, jump.affect!.weights_mc)
+            end
+        end
+    end
+
+    @testset "one metric product per root trial" begin
+        m = driven_cavity(N = 8)
+        for reduced in (false, true)
+            original = GaugeEigenExponential(m.H, m.c_ops, zeros(1, 1); layer3_sizes = reduced ? 4 : nothing)
+            bases = counted_basis.(original.bases)
+            slow = [SM.SlowModes(counted_basis(s.basis), s.weights, s.activities, s.residuals, s.coordinates, s.e_ops) for s in original.slow]
+            alg = GaugeEigenExponential(bases, slow, original.C, original.shifts, original.hysteresis, 1.0)
+            prob = mcsolveProblem(m.H, m.ψ0, [0.0, 1.0, 2.0], m.c_ops; e_ops = [], save_end = false, jump_derivative = true)
+            jump = QuantumToolbox._mc_get_jump_callback(prob.prob.kwargs[:callback])
+            prob = SciMLBase.remake(prob.prob; callback = QuantumToolbox._modify_field(jump, :initialize, (cb, u, t, integrator) -> (cb.affect!.random_n[] = 0.0; nothing)))
+            integrator = SciMLBase.init(prob, alg; tstops = [1.0, 2.0], saveat = Float64[], save_everystep = false, save_end = false)
+            SciMLBase.step!(integrator)
+            b = integrator.cache.basis
+            @test integrator.cache.reduced == reduced
+            counters = (b.V.products, b.Q.products, parent(b.R).products, b.G.products)
+            foreach(c -> c[] = 0, counters)
+            fill!(jump.affect!.weights_mc, NaN)
+            @test QuantumToolbox.DiffEqBase.condition_state(integrator, jump, 0.4) === nothing
+            f = QuantumToolbox.DiffEqBase.ConditionAndDerivative(integrator, jump, 0.4)
+            @test f(0.4) < 0
+            @test QuantumToolbox.DiffEqBase.condition_derivative(f, 0.4) > 0
+            @test map(c -> c[], counters) == (0, 0, 0, 1)
+            @test all(isnan, jump.affect!.weights_mc)
+            # Other continuous callbacks still receive the interpolated state.
+            other = SciMLBase.ContinuousCallback((u, t, integrator) -> real(dot(u, u)), identity)
+            state = copy(QuantumToolbox.DiffEqBase.condition_state(integrator, other, 0.4))
+            @test state ≈ integrator(0.4)
+
+            # An endpoint condition uses its known norm without a product.
+            foreach(c -> c[] = 0, counters)
+            QuantumToolbox._mcsolve_jump_survival(nothing, integrator.t, integrator)
+            @test all(c -> c[] == 0, counters)
+            QuantumToolbox._mcsolve_continuous_derivative(nothing, integrator.t, integrator, Val(false))
+            @test map(c -> c[], counters) == (0, 0, 0, 1)
+
+            # The same absolute time belongs to a new segment after reinitialization.
+            QuantumToolbox._mcsolve_continuous_derivative(nothing, 0.0, integrator, Val(false))
+            SciMLBase.reinit!(integrator, normalize(b.Q * ComplexF64.(1:length(b))))
+            @test !integrator.cache.condition_valid
+            initial_rate = QuantumToolbox._mcsolve_continuous_derivative(nothing, 0.0, integrator, Val(false))
+            expected = sum(norm(C.data * integrator.u)^2 for C in m.c_ops)
+            @test initial_rate ≈ expected rtol = 1.0e-10
+            SciMLBase.step!(integrator)
+            @test !integrator.cache.condition_valid   # no jump: endpoint-only checks
+        end
     end
 
     @testset "driven cavity" begin
