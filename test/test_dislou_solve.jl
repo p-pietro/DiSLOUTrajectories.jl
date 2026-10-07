@@ -1,4 +1,61 @@
 @testset "dislou_solve" begin
+    @testset "analytical jump finding" begin
+        N, κ = 6, 0.7
+        a = destroy(N)
+        H, c_ops = 0 * a, [sqrt(κ) * a]
+        for reduced in (false, true), logarithm in (false, true)
+            alg = GaugeEigenExponential(H, c_ops, zeros(1, 1); layer3_sizes = reduced ? N : nothing)
+            prob = mcsolveProblem(
+                H, fock(N, 1), [0.0, 2000.0], c_ops;
+                e_ops = [], save_end = false, jump_derivative = true, jump_log = logarithm
+            )
+            jump = QuantumToolbox._mc_get_jump_callback(prob.prob.kwargs[:callback])
+            @test jump.condition isa QuantumToolbox.ConditionWithDerivative
+            # PR 792 draws the target when integration starts.
+            prob = SciMLBase.remake(prob.prob; callback = QuantumToolbox._modify_field(jump, :initialize, (cb, u, t, integrator) -> (cb.affect!.random_n[] = 0.0; nothing)))
+            integrator = SciMLBase.init(prob, alg; saveat = Float64[], save_everystep = false, save_end = false)
+            SciMLBase.step!(integrator)
+            @test integrator.cache.coordinates == reduced
+            t = 0.9
+            # Use the callback interpolation buffer: the derivative must not overwrite it.
+            u = integrator(integrator.cache.tmp, t)
+            before = copy(u)
+            s = exp(-κ * t)
+            @test QuantumToolbox._mcsolve_continuous_derivative(u, t, integrator, Val(false)) ≈ κ * s rtol = 1.0e-11
+            @test jump.condition.derivative(u, t, integrator) ≈
+                (logarithm ? κ : κ * s) rtol = 1.0e-11
+            @test u == before
+            @test jump.condition(u, t, integrator) < 0   # zero threshold has no crossing
+
+            # Fix the threshold and locate its known crossing, even though the
+            # survival probability underflows at the end of the step.
+            r = 0.37
+            prob = mcsolveProblem(
+                H, fock(N, 1), [0.0, 2000.0], c_ops;
+                e_ops = [], save_end = false, jump_derivative = true, jump_log = logarithm
+            )
+            jump = QuantumToolbox._mc_get_jump_callback(prob.prob.kwargs[:callback])
+            prob = SciMLBase.remake(prob.prob; callback = QuantumToolbox._modify_field(jump, :initialize, (cb, u, t, integrator) -> (cb.affect!.random_n[] = r; nothing)))
+            SciMLBase.solve(prob, alg; saveat = Float64[], save_everystep = false, save_end = false)
+            @test jump.affect!.col_times_which_idx[] == 2
+            @test jump.affect!.col_times[1] ≈ -log(r) / κ atol = 1.0e-11
+        end
+
+        # Shifted operators and changing gauges must give the same events in both modes.
+        m = driven_cavity(N = 20)
+        run(logarithm, ensemblealg) = cavity_solve(
+            m, range(0, 10, 21); gauge_set = hcat(zeros(1), m.steady_gauge),
+            e_ops = [m.a' * m.a], ntraj = 12, rng = Xoshiro(2),
+            jump_log = logarithm, ensemblealg
+        )
+        plain = run(false, EnsembleSerial())
+        logarithmic = run(true, EnsembleSerial())
+        @test plain.col_which == logarithmic.col_which
+        @test all(isapprox(x, y; atol = 1.0e-9) for (x, y) in zip(plain.col_times, logarithmic.col_times))
+        @test plain.expect ≈ logarithmic.expect atol = 1.0e-9
+        @test run(true, EnsembleThreads()).col_times == logarithmic.col_times
+    end
+
     @testset "driven cavity" begin
         m = driven_cavity()
         tlist = range(0, 10, 100)

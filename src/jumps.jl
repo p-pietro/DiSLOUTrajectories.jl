@@ -5,14 +5,14 @@
 const _GaugeIntegrator = SciMLBase.DEIntegrator{<:GaugeEigenExponential}
 
 # ‖C_μ^(g) ψ‖² in the current gauge g.
-function QuantumToolbox._mcsolve_jump_weights!(weights, _, cache_mc, integrator::_GaugeIntegrator)
-    (; alg, cache, u) = integrator
+function QuantumToolbox._mcsolve_jump_weights!(weights, c_ops, cache_mc, integrator::_GaugeIntegrator, u = integrator.u, t = integrator.t)
+    (; alg, cache) = integrator
     g = cache.gauge
     if cache.coordinates
         slow = alg.slow[g]
         n = length(slow.basis)
         q = view(u, 1:n)
-        tmp = view(cache.tmp, 1:n)
+        tmp = view(cache_mc, 1:n)
         for μ in eachindex(weights, slow.weights)
             weights[μ] = _quadratic(slow.weights[μ], q, tmp)
         end
