@@ -3,14 +3,12 @@
 
 """
     discover_gauges(H, c_ops; <keyword arguments>)
-    discover_gauges(hamiltonian, collapse_operators; <keyword arguments>)
 
 Discover the paper's shifts `ζ_μ^(g)` (Eq. 9) for [`dislou_solve`](@ref).
 
 The default `method=:trajectories` clusters terminal amplitudes from preliminary
-quantum trajectories. Otherwise, you can provide symbolic constructors for the
-Hamiltonian and collapse operators, select `method=:semiclassical` and load
-`QuantumCumulants.jl` to find stable mean-field fixed points.
+quantum trajectories. With `method=:semiclassical`, it instead finds the stable
+fixed points of the mean-field equations of the bosonic modes.
 
 See also [`dislou_solve`](@ref).
 
@@ -32,19 +30,15 @@ julia> (gauges.method, size(gauges.shifts), all(iszero, gauges.shifts))
 (:trajectories, (1, 1), true)
 ```
 
-Find the same vacuum fixed point from symbolic constructors:
+Find the same vacuum fixed point from the mean-field equations:
 
 ```jldoctest
-julia> using DiSLOUTrajectories, QuantumCumulants
+julia> using DiSLOUTrajectories, QuantumToolbox
 
-julia> # H
-       hamiltonian(a) = adjoint(a) * a;
+julia> a = destroy(6);
 
-julia> # C = a
-       collapse_operators(a) = [a];
-
-julia> gauges = discover_gauges(hamiltonian, collapse_operators;
-           method = :semiclassical, limits = (1.0,));
+julia> gauges = discover_gauges(a' * a, [a];
+           method = :semiclassical, mode_ops = [a], mode_dims = [6], limits = (1.0,));
 
 julia> (gauges.method, size(gauges.shifts), all(z -> abs(z) < 1e-9, gauges.shifts))
 (:semiclassical, (1, 1), true)
@@ -54,9 +48,13 @@ julia> (gauges.method, size(gauges.shifts), all(z -> abs(z) < 1e-9, gauges.shift
 
 Trajectory discovery starts in random coherent product states. Each retained
 cluster defines shifts from the negative cluster averages of the physical
-collapse-operator expectations. Semiclassical discovery derives first-order bosonic
-mean-field equations, finds stable fixed points, and evaluates collapse amplitudes
-at those points.
+collapse-operator expectations. Semiclassical discovery solves the first-order
+mean-field equations `dα_j/dt = ⟨α|L†(a_j)|α⟩ = 0` for the amplitudes `α` of the modes,
+where `|α⟩` is a coherent product state and `L†(a_j) = i[H, a_j] + Σ_μ (C_μ† a_j C_μ -
+{C_μ†C_μ, a_j} / 2)` is the Heisenberg-picture generator. It keeps the stable solutions
+and evaluates the collapse-operator expectations `⟨α|C_μ|α⟩` at them. The operators
+are the truncated matrices of `H` and `c_ops`, so the occupations of the solutions must
+stay well below the Fock cutoffs.
 
 # Arguments
 
@@ -115,26 +113,16 @@ the semiclassical method must be selected explicitly.
 
 ## Semiclassical discovery
 
-- `hamiltonian::Function`: Function `hamiltonian(a₁, a₂, ...)` returning a
-  QuantumCumulants Hamiltonian from symbolic bosonic annihilation operators.
-- `collapse_operators::Function`: Function `collapse_operators(a₁, a₂, ...)` returning
-  a tuple or vector of QuantumCumulants collapse operators. It is also called
-  with complex fixed-point amplitudes and must then produce a collection of
-  the same length that evaluates to finite physical collapse amplitudes.
-  Include square roots of decay rates in both evaluations.
+- `H`, `c_ops`, `mode_ops`, `mode_dims`: As for trajectory discovery, with the mode
+  operators in the order of the tensor factors.
 - `method::Symbol`: Set to `:semiclassical`.
 - `limits`: Nonempty tuple or vector of positive, finite occupation bounds,
   one per mode. Accepted fixed points satisfy `abs2(α[m]) ≤ limits[m]` up to
-  numerical tolerance. These bounds define the search region.
-- `parameters`: Tuple, vector, or dictionary of unique symbolic
-  `parameter => value` pairs with finite numeric values. The keys must exactly
-  match the parameters of the compiled mean-field system. Defaults to `()`
-  for a model without symbolic parameters.
+  numerical tolerance. These bounds define the search region, and they should
+  stay a few standard deviations `√limits[m]` below `mode_dims[m]`.
 
 # Notes
 
-- Load `QuantumCumulants.jl` together with `DiSLOUTrajectories.jl` before calling
-  `method=:semiclassical`.
 - The two methods have separate keyword sets. Arbitrary `mcsolve` or ODE
   solver options are not forwarded.
 - Trajectory cluster weights are fractions of all preliminary samples,
@@ -195,10 +183,20 @@ For semiclassical discovery, `diagnostics` contains:
 discover_gauges(model, collapse_operators; method::Symbol = :trajectories, kwargs...) =
     _discover_gauges(Val(method), model, collapse_operators; kwargs...)
 
-# The :semiclassical method lives in the QuantumCumulants extension. This fallback
-# runs when it is not loaded.
+# Checks that H, the collapse operators and the bosonic mode operators (one per tensor
+# factor, in order) live in the tensor product of Fock spaces of dimensions `mode_dims`.
+function _check_operators(H, c_ops, mode_ops, mode_dims)
+    nmodes = length(mode_ops)
+    nmodes > 0 && length(mode_dims) == nmodes ||
+        throw(DimensionMismatch("mode_ops needs at least one operator, with one entry of mode_dims each"))
+    isempty(c_ops) && throw(ArgumentError("need at least one collapse operator"))
+    dims = Tuple(Int.(mode_dims))
+    has_dims(op) = size(op.data) == (prod(dims), prod(dims)) && Tuple(first(op.dims)) == dims && Tuple(last(op.dims)) == dims
+    all(has_dims, (H, mode_ops..., c_ops...)) ||
+        throw(DimensionMismatch("H, mode_ops and c_ops must have tensor dimensions mode_dims=$dims"))
+    return nothing
+end
+
 function _discover_gauges(::Val{method}, args...; kwargs...) where {method}
-    method === :semiclassical &&
-        throw(ArgumentError("method = :semiclassical requires QuantumCumulants. Try running `using QuantumCumulants` first."))
     throw(ArgumentError("unknown gauge discovery method :$method; use :trajectories or :semiclassical"))
 end

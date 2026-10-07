@@ -9,7 +9,8 @@ function _discover_gauges(
         min_neighbors::Int = 10, min_weight = 0.02, rng::AbstractRNG = Random.default_rng(),
         save_preliminary_trajectories::Int = 0, ensemblealg::EnsembleAlgorithm = EnsembleThreads()
     )
-    shifts = _check_model(H, c_ops, mode_ops, mode_dims, seed_radii, cluster_scales, preliminary_shifts)
+    _check_operators(H, c_ops, mode_ops, mode_dims)
+    shifts = _check_trajectory_inputs(c_ops, mode_dims, seed_radii, cluster_scales, preliminary_shifts)
     _check_options(;
         discovery_time, step, terminal_window, dbscan_radius, nseeds, min_neighbors,
         min_weight, save_preliminary_trajectories, ensemblealg
@@ -46,19 +47,12 @@ function _discover_gauges(
     return (; shifts = gauge_shifts, method = :trajectories, clusters.centers, clusters.weights, diagnostics)
 end
 
-# Checks the operators and per-mode inputs; returns the preliminary shifts.
-function _check_model(H, c_ops, mode_ops, mode_dims, seed_radii, cluster_scales, preliminary_shifts)
-    nmodes = length(mode_ops)
-    nmodes > 0 && length(mode_dims) == length(seed_radii) == length(cluster_scales) == nmodes ||
-        throw(DimensionMismatch("mode_ops needs at least one operator, with one entry of mode_dims, seed_radii and cluster_scales each"))
+# Checks the per-mode inputs; returns the preliminary shifts.
+function _check_trajectory_inputs(c_ops, mode_dims, seed_radii, cluster_scales, preliminary_shifts)
+    length(seed_radii) == length(cluster_scales) == length(mode_dims) ||
+        throw(DimensionMismatch("need one entry of seed_radii and cluster_scales per mode"))
     all(r -> isfinite(r) && r >= 0, seed_radii) || throw(ArgumentError("seed_radii must be finite and nonnegative"))
     all(s -> isfinite(s) && s > 0, cluster_scales) || throw(ArgumentError("cluster_scales must be finite and positive"))
-
-    dims = Tuple(Int.(mode_dims))
-    has_dims(op) = size(op.data) == (prod(dims), prod(dims)) && Tuple(first(op.dims)) == dims && Tuple(last(op.dims)) == dims
-    all(has_dims, (H, mode_ops..., c_ops...)) ||
-        throw(DimensionMismatch("H, mode_ops and c_ops must have tensor dimensions mode_dims=$dims"))
-
     shifts = preliminary_shifts === nothing ? zeros(ComplexF64, length(c_ops)) : Vector{ComplexF64}(preliminary_shifts)
     length(shifts) == length(c_ops) ||
         throw(DimensionMismatch("preliminary_shifts must contain one shift per collapse channel"))
