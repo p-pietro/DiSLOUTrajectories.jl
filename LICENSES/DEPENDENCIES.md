@@ -18,13 +18,10 @@ DiSLOUTrajectories.jl depends directly on or optionally integrates with the foll
 
 | Project                             | License |
 | ----------------------------------- | ------- |
-| Clustering.jl                       | MIT     |
-| Distances.jl                        | MIT     |
 | ForwardDiff.jl                      | MIT     |
 | ModelingToolkitBase.jl              | MIT     |
 | QuantumCumulants.jl                 | MIT     |
 | SimpleNonlinearSolve.jl             | MIT     |
-| Statistics (Julia standard library) | MIT     |
 
 ## Documentation and test dependencies
 

@@ -14,13 +14,8 @@ function versioninfo(io::IO = stdout)
         "Pietro Pacchioni and Fabrizio Minganti\n",
     )
     println(io, rpad("DiSLOUTrajectories", 20), " Ver. ", pkgversion(DiSLOUTrajectories))
-    for (extension, package) in (
-            :DiSLOUTrajectoriesClusteringExt => :Clustering,
-            :DiSLOUTrajectoriesQuantumCumulantsExt => :QuantumCumulants,
-        )
-        ext = Base.get_extension(DiSLOUTrajectories, extension)
-        ext === nothing || println(io, rpad(package, 20), " Ver. ", pkgversion(getproperty(ext, package)))
-    end
+    ext = Base.get_extension(DiSLOUTrajectories, :DiSLOUTrajectoriesQuantumCumulantsExt)
+    ext === nothing || println(io, rpad("QuantumCumulants", 20), " Ver. ", pkgversion(ext.QuantumCumulants))
     QuantumToolbox.versioninfo(io)
     println(
         io,

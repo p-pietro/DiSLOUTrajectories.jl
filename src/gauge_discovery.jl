@@ -8,9 +8,9 @@
 Discover the paper's shifts `ζ_μ^(g)` (Eq. 9) for [`dislou_solve`](@ref).
 
 The default `method=:trajectories` clusters terminal amplitudes from preliminary
-quantum trajectories and requires `Clustering.jl`. Otherwise, you can provide symbolic 
-constructors for the Hamiltonian and collapse operators, select `method=:semiclassical` and load `QuantumCumulants.jl` to find
-stable mean-field fixed points. Install these optional packages before loading them.
+quantum trajectories. Otherwise, you can provide symbolic constructors for the
+Hamiltonian and collapse operators, select `method=:semiclassical` and load
+`QuantumCumulants.jl` to find stable mean-field fixed points.
 
 See also [`dislou_solve`](@ref).
 
@@ -19,7 +19,7 @@ See also [`dislou_solve`](@ref).
 Find the single vacuum gauge of a damped mode with trajectory discovery:
 
 ```jldoctest
-julia> using DiSLOUTrajectories, QuantumToolbox, Clustering
+julia> using DiSLOUTrajectories, QuantumToolbox
 
 julia> a = destroy(2);
 
@@ -100,8 +100,8 @@ the semiclassical method must be selected explicitly.
   gauges use expectations of the original physical collapse operators.
 - `dbscan_radius`: Positive, finite DBSCAN neighborhood radius in the scaled
   real-imaginary feature space. Defaults to `1.5`.
-- `min_neighbors::Int`: Positive DBSCAN core-point neighbor-count threshold,
-  passed to `Clustering.dbscan`. Defaults to `10`.
+- `min_neighbors::Int`: Positive DBSCAN core-point threshold: the number of points
+  within `dbscan_radius`, the point itself included. Defaults to `10`.
 - `min_weight`: Minimum retained cluster population as a fraction of all
   `nseeds` samples. Must be finite and in `[0, 1)`; defaults to `0.02`.
 - `rng::AbstractRNG`: Random number generator for the initial amplitudes and
@@ -133,9 +133,6 @@ the semiclassical method must be selected explicitly.
 
 # Notes
 
-- Load `Clustering.jl` together with `DiSLOUTrajectories.jl` before calling
-  `method=:trajectories`. It activates the extension that implements the
-  DBSCAN clustering step.
 - Load `QuantumCumulants.jl` together with `DiSLOUTrajectories.jl` before calling
   `method=:semiclassical`.
 - The two methods have separate keyword sets. Arbitrary `mcsolve` or ODE
@@ -198,68 +195,10 @@ For semiclassical discovery, `diagnostics` contains:
 discover_gauges(model, collapse_operators; method::Symbol = :trajectories, kwargs...) =
     _discover_gauges(Val(method), model, collapse_operators; kwargs...)
 
-# The methods live in the Clustering (:trajectories) and QuantumCumulants
-# (:semiclassical) extensions. This fallback runs when they are not loaded.
+# The :semiclassical method lives in the QuantumCumulants extension. This fallback
+# runs when it is not loaded.
 function _discover_gauges(::Val{method}, args...; kwargs...) where {method}
-    package = get((trajectories = "Clustering", semiclassical = "QuantumCumulants"), method, nothing)
-    package === nothing &&
-        throw(ArgumentError("unknown gauge discovery method :$method; use :trajectories or :semiclassical"))
-    throw(ArgumentError("method = :$method requires $package. Try running `using $package` first."))
+    method === :semiclassical &&
+        throw(ArgumentError("method = :semiclassical requires QuantumCumulants. Try running `using QuantumCumulants` first."))
+    throw(ArgumentError("unknown gauge discovery method :$method; use :trajectories or :semiclassical"))
 end
-
-# Paper Eqs. (A.6–A.7): one trajectory from each random coherent state, averaging
-# the mode amplitudes and the collapse expectations over the terminal window.
-# Used by the Clustering extension; it lives here so that distributed workers can
-# run it without loading Clustering.
-function _run_preliminary_trajectories(
-        H, c_ops, shifts, mode_ops, mode_dims, discovery_time, seed_radii, step, nseeds,
-        terminal_window, rng, save_preliminary_trajectories, ensemblealg
-    )
-    tlist = collect(0.0:float(step):float(discovery_time))
-    last(tlist) < discovery_time && push!(tlist, float(discovery_time))
-    start = discovery_time - terminal_window
-    tail = findall(t -> t >= start || t ≈ start, tlist)   # the window, up to rounding of `start`
-
-    Hrun, Crun = all(iszero, shifts) ? (H, c_ops) : _shifted_operators(H, c_ops, shifts)
-    nmodes = length(mode_ops)
-    e_ops = vcat(collect(mode_ops), [op' * op for op in mode_ops], collect(c_ops))
-    modes, occupations, collapses = 1:nmodes, nmodes .+ (1:nmodes), 2nmodes .+ eachindex(c_ops)
-
-    # Initial amplitudes uniform in a disk of radius `seed_radii[mode]`, and one seed per run.
-    amplitudes = [seed_radii[mode] * sqrt(rand(rng)) * cis(2π * rand(rng)) for mode in 1:nmodes, _ in 1:nseeds]
-    seeds = [rand(rng, UInt64) for _ in 1:nseeds]
-    nsave = min(save_preliminary_trajectories, nseeds)
-
-    function relax(point)
-        ψ0 = tensor((coherent(Int(mode_dims[mode]), amplitudes[mode, point]) for mode in 1:nmodes)...)
-        sol = mcsolve(
-            Hrun, ψ0, tlist, Crun; e_ops, ntraj = 1, rng = Xoshiro(seeds[point]), saveat = tlist,
-            keep_runs_results = Val(true), ensemblealg = EnsembleSerial(), progress_bar = Val(false)
-        )
-        expect = sol.expect[:, 1, :]
-        terminal = vec(sum(expect[:, tail]; dims = 2)) / length(tail)
-        point <= nsave || return (; terminal, trace = nothing)
-        states = stack(ψ.data for ψ in vec(sol.states))
-        return (; terminal, trace = (; states, expect, col_times = sol.col_times[1], col_which = sol.col_which[1]))
-    end
-
-    results = _map_seeds(relax, nseeds, ensemblealg)
-    averages = stack(result.terminal for result in results)
-    traces = [results[point].trace for point in 1:nsave]
-    return (;
-        tlist, nsave,
-        terminal_means = averages[modes, :],
-        terminal_occupations = real.(averages[occupations, :]),
-        terminal_collapse_means = averages[collapses, :],
-        states = [trace.states for trace in traces],
-        traces = [trace.expect[modes, :] for trace in traces],
-        occupations = [real.(trace.expect[occupations, :]) for trace in traces],
-        jump_times = [trace.col_times for trace in traces],
-        jump_channels = [trace.col_which for trace in traces],
-    )
-end
-
-# Run `f(i)` for `i in 1:n` as requested by `ensemblealg`.
-_map_seeds(f, n, ::EnsembleSerial) = map(f, 1:n)
-_map_seeds(f, n, ::EnsembleThreads) = fetch.([Threads.@spawn f(i) for i in 1:n])
-_map_seeds(f, n, ::EnsembleDistributed) = Distributed.pmap(f, 1:n)

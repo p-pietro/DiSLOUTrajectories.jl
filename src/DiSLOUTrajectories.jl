@@ -18,5 +18,7 @@ include("eigen_exponential.jl")
 include("gauge_router.jl")
 include("solve.jl")
 include("gauge_discovery.jl")
+include("dbscan.jl")
+include("trajectory_discovery.jl")
 
 end # module
