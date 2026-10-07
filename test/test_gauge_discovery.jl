@@ -90,6 +90,5 @@
         @test_throws ArgumentError discover_gauges(H, c_ops; kw..., nseeds = 0)
         @test_throws DimensionMismatch discover_gauges(H, c_ops; kw..., mode_dims = [d + 1])
         @test_throws "unknown gauge discovery method" discover_gauges(H, c_ops; kw..., method = :unknown)
-        @test_throws "using QuantumCumulants" discover_gauges(H, c_ops; kw..., method = :semiclassical)
     end
 end

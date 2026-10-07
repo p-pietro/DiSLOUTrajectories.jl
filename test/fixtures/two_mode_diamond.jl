@@ -32,20 +32,12 @@ function two_mode_diamond_collapse_operators(a, b)
     return [sqrt(cfg.κa) * a, sqrt(cfg.κb) * b]
 end
 
-# Paper: H, C_a, C_b (Eqs. 24–25), initialized in |0,0⟩.
-function two_mode_diamond_numerical_fixture(dimensions::Tuple{Int, Int})
-    Na, Nb = dimensions
-    a = QuantumToolbox.tensor(
-        QuantumToolbox.destroy(Na), QuantumToolbox.qeye(Nb)
-    )
-    b = QuantumToolbox.tensor(
-        QuantumToolbox.qeye(Na), QuantumToolbox.destroy(Nb)
-    )
+# Paper: H, C_a, C_b (Eqs. 24–25) and the mode operators, for Fock dimensions `dims`.
+function two_mode_diamond_model(dims::Tuple{Int, Int})
+    a = tensor(destroy(dims[1]), qeye(dims[2]))
+    b = tensor(qeye(dims[1]), destroy(dims[2]))
     return (;
-        H = two_mode_diamond_hamiltonian(a, b),
-        psi0 = QuantumToolbox.tensor(
-            QuantumToolbox.fock(Na, 0), QuantumToolbox.fock(Nb, 0)
-        ),
-        c_ops = two_mode_diamond_collapse_operators(a, b),
+        H = two_mode_diamond_hamiltonian(a, b), c_ops = two_mode_diamond_collapse_operators(a, b),
+        mode_ops = [a, b],
     )
 end
