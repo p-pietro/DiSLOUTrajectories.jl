@@ -7,13 +7,13 @@ using Pkg
 Pkg.add("DiSLOUTrajectories")
 ```
 
-Alternatively, this can also be done in Julia's [Pkg REPL](https://julialang.github.io/Pkg.jl/v1/getting-started/) by pressing the key `]` in the REPL to use the package mode, and then type the following command:
+Alternatively, this can also be done in Julia's [Pkg REPL](https://pkgdocs.julialang.org/v1/getting-started/) by pressing the key `]` in the REPL to use the package mode, and then type the following command:
 
 ```julia-REPL
 (1.10) pkg> add DiSLOUTrajectories
 ```
 
-More information about `Julia`'s package manager can be found at [`Pkg.jl`](https://julialang.github.io/Pkg.jl/v1/).
+More information about `Julia`'s package manager can be found at [`Pkg.jl`](https://pkgdocs.julialang.org/v1/).
 
 To load the package and check the version information, use either [`DiSLOUTrajectories.versioninfo()`](@ref) or [`DiSLOUTrajectories.about()`](@ref), namely
 

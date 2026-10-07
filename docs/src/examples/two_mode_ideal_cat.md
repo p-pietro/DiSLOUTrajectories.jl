@@ -84,7 +84,7 @@ c_ops = cat_collapse_operators(a, b)
 
 ## Semiclassical and trajectory branch discovery
 
-The semiclassical centers ``(\alpha_g,\beta_g)`` determine ``\zeta_\mu^{(g)}`` through Eq. (A.5). The trajectory discovery method uses a betadyne unraveling: a large local-oscillator displacement is added to the memory-loss channel, while the buffer-loss and dephasing channels are left unchanged. This is needed to distinguish the ``+\alpha`` and ``-\alpha`` lobes, otherwise the trajectories would stabilize to cat states.[^unraveling] The code variable `β` is the displacement ``\zeta_1=2\sqrt{\kappa_1}\alpha``, distinct from the buffer amplitude ``\beta_g``.
+The semiclassical centers ``(\alpha_g,\beta_g)`` determine ``\zeta_\mu^{(g)}`` through Eq. (A.5), and the dephasing channel ``C_\phi\propto a^\dagger a`` enters the mean-field equations like any other collapse operator. The occupation bounds `limits` keep the coherent states of the fixed points well inside the Fock cutoffs. The trajectory discovery method uses a betadyne unraveling: a large local-oscillator displacement is added to the memory-loss channel, while the buffer-loss and dephasing channels are left unchanged. This is needed to distinguish the ``+\alpha`` and ``-\alpha`` lobes, otherwise the trajectories would stabilize to cat states.[^unraveling] The code variable `β` is the displacement ``\zeta_1=2\sqrt{\kappa_1}\alpha``, distinct from the buffer amplitude ``\beta_g``.
 
 ```julia
 sc = discover_gauges(
