@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       full:
-        description: Run the full platform and extension suite
+        description: Run the full platform suite
         type: boolean
         default: false
 
@@ -22,50 +22,6 @@ permissions:
   contents: read
 
 jobs:
-  core-import:
-    name: Core-only import
-    if: github.event_name == 'schedule' || inputs.full
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: '1.10'
-      - uses: julia-actions/cache@v3
-      - name: Import without optional weak dependencies
-        run: |
-          julia --code-coverage=@. --startup-file=no --project=@stdlib -e '
-            using Pkg
-            Pkg.activate(mktempdir())
-            Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.add(PackageSpec(name="TestReports", version="1.4"))
-            Pkg.instantiate()
-            append!(ARGS, ["test/core_import.jl"])
-            include("test/junit.jl")
-          '
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          directories: src,ext
-      - uses: codecov/codecov-action@v7
-        with:
-          files: lcov.info
-          disable_search: true
-          fail_ci_if_error: true
-          use_oidc: true
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() && hashFiles('junit.xml') != '' }}
-        uses: codecov/codecov-action@v7
-        with:
-          report_type: test_results
-          files: junit.xml
-          disable_search: true
-          fail_ci_if_error: true
-          use_oidc: true
-
   test:
     name: Julia ${{ matrix.julia }} / ${{ matrix.os }} / QuantumToolbox ${{ matrix.qt }}
     runs-on: ${{ matrix.os }}
@@ -108,7 +64,7 @@ jobs:
       - uses: julia-actions/julia-processcoverage@v1
         if: matrix.coverage
         with:
-          directories: src,ext
+          directories: src
       - uses: codecov/codecov-action@v7
         if: matrix.coverage
         with:
@@ -195,66 +151,9 @@ jobs:
       - uses: julia-actions/julia-processcoverage@v1
         if: matrix.coverage
         with:
-          directories: src,ext
+          directories: src
       - uses: codecov/codecov-action@v7
         if: matrix.coverage
-        with:
-          files: lcov.info
-          disable_search: true
-          fail_ci_if_error: true
-          use_oidc: true
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() && hashFiles('junit.xml') != '' }}
-        uses: codecov/codecov-action@v7
-        with:
-          report_type: test_results
-          files: junit.xml
-          disable_search: true
-          fail_ci_if_error: true
-          use_oidc: true
-
-  extension:
-    name: Semiclassical extension / 4 threads
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: '1'
-      - uses: julia-actions/cache@v3
-      - name: Add optional extension dependencies
-        env:
-          EXTENSION_ENV: ${{ runner.temp }}/dislou-extension
-        run: |
-          julia --project=@stdlib -e '
-            using Pkg
-            Pkg.activate(ENV["EXTENSION_ENV"])
-            Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.add([
-              # QuantumCumulants 0.7 still requires QuantumToolbox 0.47.
-              PackageSpec(name="QuantumToolbox", version="0.47"),
-              PackageSpec(name="SciMLBase", version="3"),
-              PackageSpec(name="QuantumCumulants", version="0.7"),
-              PackageSpec(name="ModelingToolkitBase", version="1.36"),
-              PackageSpec(name="TestReports", version="1.4"),
-            ])
-            Pkg.instantiate()
-          '
-      - name: Run focused extension checks
-        env:
-          EXTENSION_ENV: ${{ runner.temp }}/dislou-extension
-          JULIA_NUM_THREADS: 4
-        run: >-
-          julia --code-coverage=@. --project="$EXTENSION_ENV" --startup-file=no
-          test/junit.jl test/testsetup.jl test/test_semiclassical.jl
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          directories: src,ext
-      - uses: codecov/codecov-action@v7
         with:
           files: lcov.info
           disable_search: true
@@ -296,7 +195,7 @@ jobs:
           test/junit.jl test/testsetup.jl test/test_gpu.jl
       - uses: julia-actions/julia-processcoverage@v1
         with:
-          directories: src,ext
+          directories: src
       - uses: codecov/codecov-action@v7
         with:
           files: lcov.info
@@ -339,7 +238,7 @@ jobs:
           test/junit.jl test/testsetup.jl test/test_distributed.jl
       - uses: julia-actions/julia-processcoverage@v1
         with:
-          directories: src,ext
+          directories: src
       - uses: codecov/codecov-action@v7
         with:
           files: lcov.info

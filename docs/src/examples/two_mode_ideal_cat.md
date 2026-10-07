@@ -30,7 +30,6 @@ using DiSLOUTrajectories
 using LinearAlgebra
 using QuantumToolbox
 using Random
-import QuantumCumulants
 ```
 
 ## Ideal cat model (Section 5.1)
@@ -89,10 +88,12 @@ The semiclassical centers ``(\alpha_g,\beta_g)`` determine ``\zeta_\mu^{(g)}`` t
 
 ```julia
 sc = discover_gauges(
-    cat_hamiltonian,
-    cat_collapse_operators;
+    H,
+    c_ops;
     method=:semiclassical,
-    limits=(Na - 1, Nb - 1),
+    mode_ops=[a, b],
+    mode_dims=[Na, Nb],
+    limits=(12, 4),
 )
 
 β = 2sqrt(κ1) * α

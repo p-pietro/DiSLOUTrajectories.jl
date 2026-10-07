@@ -38,7 +38,7 @@ After running the page's environment setup block, install its additional
 dependencies once:
 
 ```julia
-Pkg.add(["CUDA", "CUDSS", "MUMPS", "ModelingToolkitBase"])
+Pkg.add(["CUDA", "CUDSS", "MUMPS"])
 ```
 
 `exact_steadystate` selects the GPU path when CUDA is functional and the
