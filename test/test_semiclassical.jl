@@ -57,6 +57,26 @@ include("fixtures/two_mode_diamond.jl")
         @test maximum(s -> s.residual, result.diagnostics.stability) < 1.0e-9
     end
 
+    # The coherent-state expectation is the normal-ordered symbol, whatever the order in which
+    # an operator is written, so nonlinear dissipators give the usual mean-field terms.
+    @testset "drift of nonlinear dissipators" begin
+        N, α = 40, 0.9 + 0.5im
+        n, a = abs2(α), destroy(N)
+        function drift(c_ops)
+            p = (; dims = [N], drifts = [SM._heisenberg_drift(0 * a, c_ops, a).data])
+            F = SM._meanfield_drift([real(α), imag(α)], p)
+            return complex(F[1], F[2])
+        end
+        @test drift([sqrt(0.3) * a^2]) ≈ -0.3 * n * α
+        @test drift([sqrt(0.4) * a' * a]) ≈ -0.2 * α
+        @test drift([sqrt(0.25) * a']) ≈ 0.125 * α
+        @test drift([sqrt(0.1) * a^3]) ≈ -0.15 * n^2 * α
+
+        ψ = SM._coherent_product([N], [α])
+        @test dot(ψ, (a * a').data * ψ) ≈ n + 1
+        @test dot(ψ, (a * a' * a * a').data * ψ) ≈ n^2 + 3n + 1
+    end
+
     @testset "input errors" begin
         a = destroy(6)
         discover(; kw...) = discover_gauges(a' * a, [a]; method = :semiclassical, mode_ops = [a], mode_dims = [6], limits = (1.0,), kw...)
