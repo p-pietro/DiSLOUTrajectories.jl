@@ -1,8 +1,8 @@
 """
     DiSLOUTrajectories.versioninfo(io::IO = stdout)
 
-Command line output of the versions of DiSLOUTrajectories.jl and of its loaded extensions,
-followed by `QuantumToolbox.versioninfo`, with the dependencies and the system. Same as
+Command line output of the version of DiSLOUTrajectories.jl, followed by
+`QuantumToolbox.versioninfo`, with the dependencies and the system. Same as
 [`DiSLOUTrajectories.about`](@ref).
 """
 function versioninfo(io::IO = stdout)
@@ -14,13 +14,6 @@ function versioninfo(io::IO = stdout)
         "Pietro Pacchioni and Fabrizio Minganti\n",
     )
     println(io, rpad("DiSLOUTrajectories", 20), " Ver. ", pkgversion(DiSLOUTrajectories))
-    for (extension, package) in (
-            :DiSLOUTrajectoriesClusteringExt => :Clustering,
-            :DiSLOUTrajectoriesQuantumCumulantsExt => :QuantumCumulants,
-        )
-        ext = Base.get_extension(DiSLOUTrajectories, extension)
-        ext === nothing || println(io, rpad(package, 20), " Ver. ", pkgversion(getproperty(ext, package)))
-    end
     QuantumToolbox.versioninfo(io)
     println(
         io,

@@ -8,8 +8,6 @@ logs/
 *.out
 *.err
 *.jld2
-!test/fixtures/clustering_kerr.jld2
-!test/fixtures/clustering_two_mode.jld2
 .tokensave/
 .worktrees/
 .vscode/

@@ -1,6 +1,5 @@
 using Test
 using DiSLOUTrajectories
-import Clustering  # activates the extension used by trajectory gauge discovery
 using QuantumToolbox
 using LinearAlgebra
 using Random
@@ -9,7 +8,6 @@ import SciMLBase
 import SciMLBase: EnsembleSerial, EnsembleThreads
 
 const SM = DiSLOUTrajectories
-const ClusteringExt = Base.get_extension(SM, :DiSLOUTrajectoriesClusteringExt)
 
 include(joinpath(@__DIR__, "fixtures", "driven_kerr_model.jl"))
 

@@ -36,10 +36,9 @@ using LinearAlgebra
 using Printf
 using QuantumToolbox
 using Random
-import QuantumCumulants
 
 include(joinpath(examples_dir, "exact_steady_state.jl"))
-using .ExactSteadyState: exact_steadystate, semiclassical_fixed_points
+using .ExactSteadyState: exact_steadystate
 
 const QUICK = false
 const CF = ComplexF64
@@ -100,24 +99,26 @@ c_ops = collapse_operators(a, b)
 
 ## Semiclassical gauges
 
-The symbolic mean-field equations have five fixed points: three stable centers ``(\alpha_g,\beta_g)`` defining ``\zeta_\mu^{(g)}`` through Eq. (A.5) and two unstable saddles.
+The mean-field equations have five fixed points: three stable centers ``(\alpha_g,\beta_g)`` defining ``\zeta_\mu^{(g)}`` through Eq. (A.5) and two unstable saddles. The occupation bounds keep their coherent states well inside the Fock cutoffs.
 
 ```julia
-semiclassical_limits = (full_dims[1] - 1, full_dims[2] - 1)
-gauge_limits = QUICK ? (Na - 1, Nb - 1) : semiclassical_limits
-semiclassical = semiclassical_fixed_points(
-    hamiltonian, collapse_operators; limits=semiclassical_limits)
 sc = discover_gauges(
-    hamiltonian,
-    collapse_operators;
+    H,
+    c_ops;
     method=:semiclassical,
-    limits=gauge_limits,
+    mode_ops=[a, b],
+    mode_dims=[Na, Nb],
+    limits=QUICK ? (Na - 1, Nb - 1) : (40, 9),
 )
 
+semiclassical = [
+    (; a=sc.diagnostics.roots[1, g], b=sc.diagnostics.roots[2, g], point.stable)
+    for (g, point) in enumerate(sc.diagnostics.stability)
+]
 nstable = count(point -> point.stable, semiclassical)
 nunstable = length(semiclassical) - nstable
 stable_points = filter(point -> point.stable, semiclassical)
-stable_branches = sort(stable_points; by=point -> (abs2(point.b), real(point.a)))
+stable_branches = sort(stable_points; by=point -> (round(abs2(point.b); digits=6), real(point.a)))
 branch_centers = CF[getproperty(point, field) for field in (:a, :b), point in stable_branches]
 (; fixed_points=length(semiclassical), stable=nstable, gauges=size(sc.centers, 2))
 ```

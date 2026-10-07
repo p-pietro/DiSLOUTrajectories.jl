@@ -16,7 +16,7 @@ sol = dislou_solve(H, ψ0, tlist, c_ops; gauge_set, e_ops)
 DiSLOU supports open systems described by a finite-dimensional, time-independent Lindblad, for which the diagonalization of the effective Hamiltonian fits in memory.
 For the best performance, the system should exhibit metastability, and the quantum trajectories should remain close to the metastable states during most of the evolution.  A prototypical example of such a system is the driven-dissipative Kerr resonator in the bistable regime.
 
-The required gauges can be found through automatic discovery through short initial trajectories, semiclassical discovery from symbolic bosonic constructors, or they can be provided manually. The solver (`dislou_solve`) returns expectation values, states and jump records,
+The required gauges can be found through automatic discovery through short initial trajectories, semiclassical discovery from the mean-field fixed points of the bosonic modes, or they can be provided manually. The solver (`dislou_solve`) returns expectation values, states and jump records,
 averaged or for every trajectory, as `mcsolve` does. Refer to the [API reference](api.md) for further details.
 
 ## Read next

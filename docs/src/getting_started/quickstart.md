@@ -216,12 +216,7 @@ than the markers for this example.
 ## Discover the gauge automatically
 
 For this cavity the gauge is known analytically. The two discovery methods
-recover it from the same model. Install their optional dependencies once:
-
-```julia
-using Pkg
-Pkg.add(["Clustering", "QuantumCumulants"])
-```
+recover it from the same model.
 
 ### From preliminary trajectories
 
@@ -230,7 +225,6 @@ their terminal amplitudes. Let them relax for ``20/κ`` to find the single
 center near ``α``:
 
 ```jldoctest quickstart
-using Clustering
 trajectory_gauges = discover_gauges(H, c_ops;
     method = :trajectories, mode_ops = [a], mode_dims = [N],
     discovery_time = 20.0 / κ, step = 0.5 / κ,
@@ -244,20 +238,15 @@ trajectory_gauges = discover_gauges(H, c_ops;
 
 ### From semiclassical fixed points
 
-`method = :semiclassical` finds stable mean-field fixed points from symbolic
-model constructors. For this linear cavity, the mean-field equation is exact:
-``\dot β=κ(α-β)/2``. The occupation search bound `limits` must contain
-``|α|^2``, it is independent of the Fock cutoff ``N``.
+`method = :semiclassical` finds the stable fixed points of the mean-field equation
+of the mode, evaluated on coherent states of the model operators. For this linear
+cavity, the mean-field equation is exact: ``\dot β=κ(α-β)/2``. The occupation
+search bound `limits` must contain ``|α|^2`` and stay below the Fock cutoff ``N``.
 
 ```jldoctest quickstart
-using QuantumCumulants
-# H
-hamiltonian(b) = im * κ / 2 * (α * b' - conj(α) * b)
-# C = √κ a
-collapse_operators(b) = [sqrt(κ) * b]
-semiclassical_gauges = discover_gauges(hamiltonian, collapse_operators;
-    method = :semiclassical, limits = (4.0,))
-(size(semiclassical_gauges.shifts), isapprox(semiclassical_gauges.shifts, gauges; atol = 1e-9))
+semiclassical_gauges = discover_gauges(H, c_ops;
+    method = :semiclassical, mode_ops = [a], mode_dims = [N], limits = (4.0,))
+(size(semiclassical_gauges.shifts), isapprox(semiclassical_gauges.shifts, gauges; atol = 1e-6))
 
 # output
 

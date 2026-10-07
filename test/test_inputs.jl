@@ -29,7 +29,6 @@ end
 @testset "package information" begin
     info = sprint(SM.versioninfo)
     @test occursin("DiSLOUTrajectories   Ver. $(pkgversion(SM))", info)
-    @test occursin("Clustering", info)   # loaded extension
     @test occursin("QuantumToolbox.jl", info)
     @test sprint(SM.about) == info
     @test occursin("@article", sprint(SM.cite))

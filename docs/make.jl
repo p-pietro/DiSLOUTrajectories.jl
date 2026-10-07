@@ -1,7 +1,5 @@
 using Documenter
 using QuantumToolbox
-using Clustering
-using QuantumCumulants
 using DiSLOUTrajectories
 using TOML
 
