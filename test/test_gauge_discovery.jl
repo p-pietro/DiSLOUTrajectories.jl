@@ -65,13 +65,25 @@
         points = ComplexF64[
         1.0 + 1.0im 1.04 + 0.98im 0.97 + 1.02im 1.12 + 1.0im -1.0 - 1.0im -0.98 - 1.04im -1.03 - 0.97im -0.9 - 1.06im 5.0 + 5.0im
         ]
-        clusters = ClusteringExt._cluster_terminal_means(
+        clusters = SM._cluster_terminal_means(
             points; cluster_scales = [0.2], dbscan_radius = 0.5, min_neighbors = 3, min_weight = 0.0
         )
         @test clusters.counts == [4, 4]
         @test clusters.weights == [4 / 9, 4 / 9]
         @test clusters.labels == [2, 2, 2, 2, 1, 1, 1, 1, 0]   # equal weights are ordered by center
         @test clusters.centers ≈ ComplexF64[(-3.91 - 4.07im) / 4 (4.13 + 4.0im) / 4]
+
+        # The point at 0.38 is within reach of a core point of each cluster, but not a core
+        # point itself: it joins the nearest cluster without merging the two.
+        line = ComplexF64[-0.3 -0.2 -0.1 0.0 0.38 0.8 0.9 1.0 1.1]
+        clusters = SM._cluster_terminal_means(
+            line; cluster_scales = [1.0], dbscan_radius = 0.45, min_neighbors = 4, min_weight = 0.0
+        )
+        @test clusters.labels == [1, 1, 1, 1, 1, 2, 2, 2, 2]
+        @test clusters.counts == [5, 4]
+        @test SM._cluster_terminal_means(   # the lighter cluster is dropped
+            line; cluster_scales = [1.0], dbscan_radius = 0.45, min_neighbors = 4, min_weight = 0.5
+        ).labels == [1, 1, 1, 1, 1, 0, 0, 0, 0]
     end
 
     @testset "input errors" begin

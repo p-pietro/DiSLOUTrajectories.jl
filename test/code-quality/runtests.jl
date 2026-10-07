@@ -32,11 +32,19 @@ include("../reporting/check.jl")
                 (DiSLOUTrajectories._coordinates!, (similar(ψ), basis, ψ)),
                 (DiSLOUTrajectories._project!, (copy(ψ), basis, 1.0e-3, similar(ψ), similar(ψ))),
                 (DiSLOUTrajectories._gauge_activities!, (zeros(2), C, zeros(ComplexF64, 1, 2), ψ, similar(ψ))),
+                (DiSLOUTrajectories._dbscan, (randn(rng, 2, 20), 1.0, 3)),
             )
             @testset "$(nameof(f))" begin
                 JET.test_call(f, typeof.(args); target_modules = (DiSLOUTrajectories,), mode = :basic)
                 JET.test_opt(f, typeof.(args); target_modules = (DiSLOUTrajectories,))
             end
+        end
+
+        @testset "_cluster_terminal_means" begin
+            points = randn(rng, ComplexF64, 2, 20)
+            JET.@test_opt target_modules = (DiSLOUTrajectories,) DiSLOUTrajectories._cluster_terminal_means(
+                points; cluster_scales = [1.0, 1.0], dbscan_radius = 1.0, min_neighbors = 3, min_weight = 0.1,
+            )
         end
     end
 
