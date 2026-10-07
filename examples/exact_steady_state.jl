@@ -6,12 +6,9 @@ using SparseArrays
 
 import CUDA
 import CUDSS
-import DiSLOUTrajectories
 import MUMPS
-import ModelingToolkitBase
-import QuantumCumulants
 
-export exact_steadystate, semiclassical_fixed_points
+export exact_steadystate
 
 const CF = ComplexF64
 
@@ -210,56 +207,6 @@ function exact_steadystate(
         trace_error,
     )
     return (; state, backend = selected, diagnostics)
-end
-
-# F_j(α, α*) = α̇_j (Eq. A.1).
-function _symbolic_meanfield_drift(hamiltonian, collapse_operators)
-    space = QuantumCumulants.tensor(
-        QuantumCumulants.FockSpace(:memory),
-        QuantumCumulants.FockSpace(:buffer),
-    )
-    a = QuantumCumulants.Destroy(space, :a, 1)
-    b = QuantumCumulants.Destroy(space, :b, 2)
-    equations = try
-        QuantumCumulants.meanfield(
-            [a, b], hamiltonian(a, b), collect(collapse_operators(a, b)); order = 1
-        )
-    catch err
-        error("failed to derive the two-mode mean-field equations: ", sprint(showerror, err))
-    end
-    length(equations) == 2 || error(
-        "first-order two-mode model produced $(length(equations)) equations; expected 2"
-    )
-
-    problem = try
-        system = ModelingToolkitBase.mtkcompile(
-            ModelingToolkitBase.System(equations; name = :two_mode_meanfield)
-        )
-        initial = QuantumCumulants.initial_values(equations, zeros(CF, 2))
-        ModelingToolkitBase.ODEProblem(system, initial, (0.0, 1.0))
-    catch err
-        error("failed to compile the two-mode mean-field equations: ", sprint(showerror, err))
-    end
-    return u -> problem.f(u, problem.p, 0.0)
-end
-
-# α_j^(g) roots (Eqs. A.2–A.3) and max Re λℓ[J] (Eq. A.4).
-function semiclassical_fixed_points(hamiltonian, collapse_operators; limits)
-    length(limits) == 2 || throw(ArgumentError("limits must contain two occupation bounds"))
-    bounds = (Float64(limits[1]), Float64(limits[2]))
-    all(x -> isfinite(x) && x > 0, bounds) ||
-        throw(ArgumentError("occupation limits must be finite and positive, got $limits"))
-
-    drift = _symbolic_meanfield_drift(hamiltonian, collapse_operators)
-    # Gauge discovery rejects models with no stable roots; plots still need those roots.
-    extension = Base.get_extension(DiSLOUTrajectories, :DiSLOUTrajectoriesQuantumCumulantsExt)
-    points = [
-        (;
-            a = point.amplitudes[1], b = point.amplitudes[2], point.stable,
-            point.max_real_eigenvalue, point.residual,
-        ) for point in extension._phase_space_candidates(drift, bounds)
-    ]
-    return sort!(points; by = p -> (abs2(p.a), real(p.a), imag(p.a), abs2(p.b), real(p.b)))
 end
 
 end

@@ -28,16 +28,13 @@ Pkg.instantiate()
 ## Load the packages
 
 QuantumToolbox supplies the operators and reference solver; DiSLOUTrajectories.jl supplies
-gauge discovery and trajectory propagation. Clustering and QuantumCumulants
-enable the two discovery methods, and CairoMakie draws the figures.
+gauge discovery and trajectory propagation, and CairoMakie draws the figures.
 
 ```julia
 using CairoMakie
-using Clustering
 using DiSLOUTrajectories
 using QuantumToolbox
 using Random
-import QuantumCumulants
 ```
 
 ## Define the Kerr model
@@ -51,50 +48,44 @@ H=-\Delta a^\dagger a+\frac{K}{2}a^{\dagger 2}a^2
 ```
 
 Use a Fock cutoff of ``N=190`` and the bistable drive ``\varepsilon=22.217``.
-With ``\kappa=1``, the time values below also represent ``\kappa t``. Define
-the model as functions so the same expressions work with the symbolic mode
-used for semiclassical discovery and with `QuantumToolbox`'s objects.
+With ``\kappa=1``, the time values below also represent ``\kappa t``.
 
 ```julia
 N = 190
 κ, Δ, K = 1.0, 13.0, 0.2
 ε = 22.217 + 0im
 
-# H (Eq. 7).
-kerr_hamiltonian(mode) =
-    -Δ * adjoint(mode) * mode +
-    (K / 2) * adjoint(mode)^2 * mode^2 +
-    im * (ε * adjoint(mode) - conj(ε) * mode)
-# C = √κ a (Eq. 7).
-kerr_collapse_operators(mode) = [sqrt(κ) * mode]
+a = destroy(N)
+n_op = a' * a
+# H and C = √κ a (Eq. 7).
+H = -Δ * a' * a + (K / 2) * a'^2 * a^2 + im * (ε * a' - conj(ε) * a)
+c_ops = [sqrt(κ) * a]
 ```
 
 ## Discover the stable gauges and choose the initial state
 
-Pass the model functions to semiclassical discovery. `limits` bounds the
-occupation searched for fixed points. Stable roots become gauge centers,
-while any unstable root remain available in the diagnostics.
+Semiclassical discovery solves the mean-field equation of the mode on coherent
+states of the model operators. `limits` bounds the occupation searched for fixed
+points, and keeps their coherent states well inside the Fock cutoff. Stable roots
+become gauge centers, while any unstable root remains available in the diagnostics.
 
 ```julia
 sc = discover_gauges(
-    kerr_hamiltonian,
-    kerr_collapse_operators;
+    H, c_ops;
     method=:semiclassical,
-    limits=(N - 1,),
+    mode_ops=[a],
+    mode_dims=[N],
+    limits=(120,),
 )
 
 α_saddle = only(sc.diagnostics.rejected)
 ```
 
-Now construct the operators and a coherent initial
-state at that saddle. This starts the evolution away from either stable
-center. Store the discovered shifts  for the later trajectory solves.
+Now construct a coherent initial state at that saddle. This starts the
+evolution away from either stable center. Store the discovered shifts for the
+later trajectory solves.
 
 ```julia
-a = destroy(N)
-n_op = a' * a
-H = kerr_hamiltonian(a)
-c_ops = kerr_collapse_operators(a)
 ψ0 = coherent(N, α_saddle)
 Z = sc.shifts
 
@@ -102,7 +93,7 @@ Z = sc.shifts
 ```
 
 ```text
-(stable_centers = ComplexF64[0.0726626169192963 + 1.7953859931208251im 1.7414229459815702 - 8.622402989013787im], unstable_saddle = 1.1116019736702343 + 6.939543439607241im)
+(stable_centers = ComplexF64[0.0726626169192964 + 1.7953859931208263im 1.741422945981564 - 8.622402989013775im], unstable_saddle = 1.111601973670237 + 6.939543439607221im)
 ```
 
 The stable centers are near ``0.0727+1.7954i`` and ``1.7414-8.6224i``.

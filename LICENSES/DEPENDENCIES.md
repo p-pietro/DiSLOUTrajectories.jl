@@ -1,30 +1,20 @@
 # Third-Party Dependencies
 
-DiSLOUTrajectories.jl depends directly on or optionally integrates with the following third-party software, which are provided under their respective licenses.
+DiSLOUTrajectories.jl depends directly on the following third-party software, which are provided under their respective licenses.
 
 ## Runtime dependencies
 
 | Project                                | License      |
 | -------------------------------------- | ------------ |
 | Distributed (Julia standard library)   | MIT          |
+| ForwardDiff.jl                         | MIT          |
 | LinearAlgebra (Julia standard library) | MIT          |
 | OrdinaryDiffEqCore.jl                  | MIT          |
 | QuantumToolbox.jl                      | BSD-3-Clause |
 | Random (Julia standard library)        | MIT          |
 | SciMLBase.jl                           | MIT          |
 | SciMLOperators.jl                      | MIT          |
-
-## Optional dependencies
-
-| Project                             | License |
-| ----------------------------------- | ------- |
-| Clustering.jl                       | MIT     |
-| Distances.jl                        | MIT     |
-| ForwardDiff.jl                      | MIT     |
-| ModelingToolkitBase.jl              | MIT     |
-| QuantumCumulants.jl                 | MIT     |
-| SimpleNonlinearSolve.jl             | MIT     |
-| Statistics (Julia standard library) | MIT     |
+| SimpleNonlinearSolve.jl                | MIT          |
 
 ## Documentation and test dependencies
 

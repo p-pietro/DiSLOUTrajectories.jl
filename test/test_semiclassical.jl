@@ -1,187 +1,93 @@
-using Test
-using DiSLOUTrajectories
-using QuantumCumulants
-
-@testset "extension activation needs only QuantumCumulants" begin
-    @test Base.get_extension(DiSLOUTrajectories, :DiSLOUTrajectoriesQuantumCumulantsExt) !== nothing
-    @test !isdefined(Main, :ModelingToolkitBase)
-    # The call reaches the extension, which requires `limits`, and not the fallback.
-    @test_throws UndefKeywordError discover_gauges(nothing, []; method = :semiclassical)
-end
-
 include("fixtures/two_mode_diamond.jl")
 
-@testset "semiclassical named result passes through the matching numerical solve" begin
-    limits = (8.0, 8.0)
-    result = discover_gauges(
-        two_mode_diamond_hamiltonian,
-        two_mode_diamond_collapse_operators;
-        method = :semiclassical,
-        limits,
-    )
-    fixture = two_mode_diamond_numerical_fixture(Tuple(Int.(limits) .+ 1))
-    solution = dislou_solve(
-        fixture.H, fixture.psi0, [0.0, 0.1], fixture.c_ops;
-        gauge_set = result, ntraj = 2, rng = Xoshiro(5), progress_bar = Val(false)
-    )
-
-    @test solution isa TimeEvolutionMCSol
-    @test length(solution.alg.bases) == size(result.shifts, 2)
-end
-
-function captured_argument_error(f)
-    err = thrown(f)
-    @test err isa ArgumentError
-    return sprint(showerror, err)
-end
-
-@variables Δ::Real η::Real γ::Real
-
-# Paper: H (Eq. 1).
-parameterized_hamiltonian(a, b) =
-    Δ * adjoint(a) * a + η * (a + adjoint(a)) + 0.7 * adjoint(b) * b
-# Paper: C_μ (Eq. 1).
-parameterized_collapse_operators(a, b) = [sqrt(γ) * a, sqrt(0.6) * b]
-const PARAMETERIZED_VALUES = (Δ => 1.0, η => 0.2, γ => 0.4)
-
-# Paper: H (Eq. 7).
-kerr_hamiltonian(a) = -13.0 * adjoint(a) * a +
-    0.1 * adjoint(a)^2 * a^2 + 22.217im * (adjoint(a) - a)
-# Paper: C = √κ a, with κ = 1 (Eq. 7).
-kerr_collapse_operators(a) = [a]
-
-# Paper: H (Eq. 1).
-three_mode_hamiltonian(a, b, c) =
-    0.3 * adjoint(a) * a + 0.5 * adjoint(b) * b + 0.7 * adjoint(c) * c
-# Paper: C_μ (Eq. 1).
-three_mode_collapse_operators(a, b, c) =
-    [sqrt(0.2) * a, sqrt(0.4) * b, sqrt(0.6) * c]
-
-@testset "semiclassical discovery supports one and three modes" begin
-    kerr = discover_gauges(
-        kerr_hamiltonian,
-        kerr_collapse_operators;
-        method = :semiclassical,
-        limits = (189.0,),
-    )
-    expected_centers = reshape(
-        ComplexF64[
-            0.07266261691929639 + 1.7953859931208265im,
-            1.7414229459815616 - 8.62240298901377im,
-        ], 1, :
-    )
-    expected_saddle = reshape(
-        ComplexF64[
-            1.1116019736702265 + 6.939543439607197im,
-        ], 1, :
-    )
-
-    @test kerr.centers ≈ expected_centers atol = 1.0e-7
-    @test kerr.shifts ≈ -expected_centers atol = 1.0e-7
-    @test kerr.diagnostics.rejected ≈ expected_saddle atol = 1.0e-7
-
-    three_mode = discover_gauges(
-        three_mode_hamiltonian,
-        three_mode_collapse_operators;
-        method = :semiclassical,
-        limits = (1.0e-24, 1.0e-24, 1.0e-24),
-    )
-
-    @test size(three_mode.centers) == (3, 1)
-    @test size(three_mode.shifts) == (3, 1)
-    @test maximum(abs, three_mode.centers) < 1.0e-9
-    @test maximum(abs, three_mode.shifts) < 1.0e-9
-    @test size(three_mode.diagnostics.roots, 1) == 3
-    @test size(three_mode.diagnostics.rejected) == (3, 0)
-end
-
-@testset "semiclassical discovery substitutes physical collapse parameters" begin
-    result = discover_gauges(
-        parameterized_hamiltonian,
-        parameterized_collapse_operators;
-        method = :semiclassical,
-        limits = (4.0, 4.0),
-        parameters = PARAMETERIZED_VALUES,
-    )
-
-    @test all(isfinite, result.shifts)
-    @test result.shifts[1, :] ≈ -sqrt(0.4) .* result.centers[1, :]
-    @test result.shifts[2, :] ≈ -sqrt(0.6) .* result.centers[2, :]
-end
-
-@testset "semiclassical discovery validates public symbolic inputs" begin
-    for limits in (
-            nothing, 1.0, (), ("bad",), (0.0, 1.0),
-            (-1.0, 1.0), (Inf, 1.0), (1.0, NaN),
+@testset "semiclassical gauge discovery" begin
+    @testset "driven Kerr resonator matches its analytic branches" begin
+        kerr = driven_kerr_model()
+        semiclassical(; kw...) = discover_gauges(
+            kerr.H, kerr.c_ops; method = :semiclassical, mode_ops = [kerr.a],
+            mode_dims = [kerr.p.N], limits = (20.0,), kw...
         )
-        message = captured_argument_error() do
-            discover_gauges(
-                parameterized_hamiltonian,
-                parameterized_collapse_operators;
-                method = :semiclassical,
-                limits,
-                parameters = PARAMETERIZED_VALUES,
-            )
+        result = semiclassical()
+
+        @test propertynames(result) == (:shifts, :method, :centers, :weights, :diagnostics)
+        @test result.method === :semiclassical
+        @test result.centers ≈ [kerr.αlow kerr.αhigh] atol = 1.0e-7
+        @test result.diagnostics.rejected ≈ [kerr.αmid] atol = 1.0e-7
+        @test result.shifts ≈ -sqrt(kerr.κ) * result.centers atol = 1.0e-7
+        @test result.weights == [0.5, 0.5]
+        @test length(result.diagnostics.stability) == size(result.diagnostics.roots, 2) == 3
+        @test all(result.diagnostics.stable)
+        @test semiclassical(ensemblealg = EnsembleSerial()).diagnostics.roots == result.diagnostics.roots
+
+        sol = dislou_solve(
+            kerr.H, kerr.ψ0, [0.0, 0.5], kerr.c_ops; gauge_set = result, ntraj = 2, rng = Xoshiro(5), quiet...
+        )
+        @test length(sol.alg.bases) == 2
+    end
+
+    # Two stable branches and a saddle of the memory, with the buffer adiabatically following.
+    @testset "two-mode diamond" begin
+        cfg = TWO_MODE_DIAMOND
+        model = two_mode_diamond_model((cfg.Na, cfg.Nb))
+        result = discover_gauges(
+            model.H, model.c_ops; method = :semiclassical, model.mode_ops,
+            mode_dims = [cfg.Na, cfg.Nb], limits = (cfg.Na - 1, cfg.Nb - 1)
+        )
+        @test size(result.diagnostics.roots) == (2, 5)
+        @test count(s -> s.stable, result.diagnostics.stability) == size(result.centers, 2) == 3
+        @test result.shifts ≈ -sqrt.([cfg.κa, cfg.κb]) .* result.centers
+    end
+
+    # The shifts are the collapse operators evaluated on the fixed point, ζ = -C(α, α*).
+    @testset "nonlinear collapse operators" begin
+        dims = (12, 8)
+        a = tensor(destroy(dims[1]), qeye(dims[2]))
+        b = tensor(qeye(dims[1]), destroy(dims[2]))
+        H = 0.8 * a' * a + 0.3 * b' * b + 0.5 * (a + a') + 0.2 * (a' * b + b' * a)
+        c_ops = [sqrt(0.4) * a, sqrt(0.3) * b, sqrt(0.05) * a^2, sqrt(0.02) * (a' * a)]
+        result = discover_gauges(
+            H, c_ops; method = :semiclassical, mode_ops = [a, b], mode_dims = collect(dims), limits = (6.0, 3.0)
+        )
+        α, β = result.centers[1, :], result.centers[2, :]
+        @test size(result.shifts) == (4, size(result.centers, 2))
+        @test result.shifts[1, :] ≈ -sqrt(0.4) * α
+        @test result.shifts[2, :] ≈ -sqrt(0.3) * β
+        @test result.shifts[3, :] ≈ -sqrt(0.05) * α .^ 2
+        @test result.shifts[4, :] ≈ -sqrt(0.02) * abs2.(α)
+        @test maximum(s -> s.residual, result.diagnostics.stability) < 1.0e-9
+    end
+
+    # The coherent-state expectation is the normal-ordered symbol, whatever the order in which
+    # an operator is written, so nonlinear dissipators give the usual mean-field terms.
+    @testset "drift of nonlinear dissipators" begin
+        N, α = 40, 0.9 + 0.5im
+        n, a = abs2(α), destroy(N)
+        function drift(c_ops)
+            p = (; dims = [N], drifts = [SM._heisenberg_drift(0 * a, c_ops, a).data])
+            F = SM._meanfield_drift([real(α), imag(α)], p)
+            return complex(F[1], F[2])
         end
-        @test occursin("occupation limits", message)
+        @test drift([sqrt(0.3) * a^2]) ≈ -0.3 * n * α
+        @test drift([sqrt(0.4) * a' * a]) ≈ -0.2 * α
+        @test drift([sqrt(0.25) * a']) ≈ 0.125 * α
+        @test drift([sqrt(0.1) * a^3]) ≈ -0.15 * n^2 * α
+
+        ψ = SM._coherent_product([N], [α])
+        @test dot(ψ, (a * a').data * ψ) ≈ n + 1
+        @test dot(ψ, (a * a' * a * a').data * ψ) ≈ n^2 + 3n + 1
     end
 
-    incomplete = captured_argument_error() do
-        discover_gauges(
-            parameterized_hamiltonian,
-            parameterized_collapse_operators;
-            method = :semiclassical,
-            limits = (4.0, 4.0),
-            parameters = (Δ => 1.0, η => 0.2),
+    @testset "input errors" begin
+        a = destroy(6)
+        discover(; kw...) = discover_gauges(a' * a, [a]; method = :semiclassical, mode_ops = [a], mode_dims = [6], limits = (1.0,), kw...)
+        for limits in (nothing, 1.0, (), (0.0,), (-1.0,), (Inf,), (NaN,), (1.0, 1.0))
+            @test_throws "occupation bound" discover(; limits)
+        end
+        @test_throws DimensionMismatch discover(mode_dims = [7])
+        @test_throws UndefKeywordError discover_gauges(a' * a, [a]; method = :semiclassical)
+        # Gain only: the fixed point at the origin is unstable.
+        @test_throws "no stable fixed points" discover_gauges(
+            0 * a, [a']; method = :semiclassical, mode_ops = [a], mode_dims = [6], limits = (1.0,)
         )
     end
-    @test occursin("constructor parameter", incomplete)
-
-    duplicate = captured_argument_error() do
-        discover_gauges(
-            parameterized_hamiltonian,
-            parameterized_collapse_operators;
-            method = :semiclassical,
-            limits = (4.0, 4.0),
-            parameters = (Δ => 1.0, Δ => 2.0, η => 0.2, γ => 0.4),
-        )
-    end
-    @test occursin("constructor parameter", duplicate)
-
-    nonfinite = captured_argument_error() do
-        discover_gauges(
-            parameterized_hamiltonian,
-            parameterized_collapse_operators;
-            method = :semiclassical,
-            limits = (4.0, 4.0),
-            parameters = (Δ => 1.0, η => NaN, γ => 0.4),
-        )
-    end
-    @test occursin("constructor parameter", nonfinite)
-end
-
-# This fails if the public dispatcher does not expose the extension result, or
-# if discovery returns unscaled targets rather than generator-preserving shifts.
-@testset "semiclassical discovery returns a reusable named gauge set" begin
-    cfg = TWO_MODE_DIAMOND
-    result = discover_gauges(
-        two_mode_diamond_hamiltonian,
-        two_mode_diamond_collapse_operators;
-        method = :semiclassical,
-        limits = (cfg.Na - 1, cfg.Nb - 1),
-    )
-
-    @test propertynames(result) == (:shifts, :method, :centers, :weights, :diagnostics)
-    @test result.method === :semiclassical
-    @test size(result.centers) == (2, 3)
-    @test size(result.shifts) == (2, 3)
-    @test length(result.weights) == 3
-    @test size(result.shifts, 2) == size(result.centers, 2) == length(result.weights)
-    @test all(isfinite, result.shifts)
-    @test all(result.diagnostics.stable)
-    @test result.shifts == -reshape(sqrt.([cfg.κa, cfg.κb]), :, 1) .* result.centers
-    @test size(result.diagnostics.roots, 1) == 2
-    @test length(result.diagnostics.stability) == size(result.diagnostics.roots, 2)
-    @test size(result.diagnostics.rejected, 1) == 2
-    @test DiSLOUTrajectories._gauge_shifts(result, size(result.shifts, 1)) == result.shifts
 end

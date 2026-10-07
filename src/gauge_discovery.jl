@@ -3,14 +3,12 @@
 
 """
     discover_gauges(H, c_ops; <keyword arguments>)
-    discover_gauges(hamiltonian, collapse_operators; <keyword arguments>)
 
 Discover the paper's shifts `ζ_μ^(g)` (Eq. 9) for [`dislou_solve`](@ref).
 
 The default `method=:trajectories` clusters terminal amplitudes from preliminary
-quantum trajectories and requires `Clustering.jl`. Otherwise, you can provide symbolic 
-constructors for the Hamiltonian and collapse operators, select `method=:semiclassical` and load `QuantumCumulants.jl` to find
-stable mean-field fixed points. Install these optional packages before loading them.
+quantum trajectories. With `method=:semiclassical`, it instead finds the stable
+fixed points of the mean-field equations of the bosonic modes.
 
 See also [`dislou_solve`](@ref).
 
@@ -19,7 +17,7 @@ See also [`dislou_solve`](@ref).
 Find the single vacuum gauge of a damped mode with trajectory discovery:
 
 ```jldoctest
-julia> using DiSLOUTrajectories, QuantumToolbox, Clustering
+julia> using DiSLOUTrajectories, QuantumToolbox
 
 julia> a = destroy(2);
 
@@ -32,19 +30,15 @@ julia> (gauges.method, size(gauges.shifts), all(iszero, gauges.shifts))
 (:trajectories, (1, 1), true)
 ```
 
-Find the same vacuum fixed point from symbolic constructors:
+Find the same vacuum fixed point from the mean-field equations:
 
 ```jldoctest
-julia> using DiSLOUTrajectories, QuantumCumulants
+julia> using DiSLOUTrajectories, QuantumToolbox
 
-julia> # H
-       hamiltonian(a) = adjoint(a) * a;
+julia> a = destroy(6);
 
-julia> # C = a
-       collapse_operators(a) = [a];
-
-julia> gauges = discover_gauges(hamiltonian, collapse_operators;
-           method = :semiclassical, limits = (1.0,));
+julia> gauges = discover_gauges(a' * a, [a];
+           method = :semiclassical, mode_ops = [a], mode_dims = [6], limits = (1.0,));
 
 julia> (gauges.method, size(gauges.shifts), all(z -> abs(z) < 1e-9, gauges.shifts))
 (:semiclassical, (1, 1), true)
@@ -54,9 +48,13 @@ julia> (gauges.method, size(gauges.shifts), all(z -> abs(z) < 1e-9, gauges.shift
 
 Trajectory discovery starts in random coherent product states. Each retained
 cluster defines shifts from the negative cluster averages of the physical
-collapse-operator expectations. Semiclassical discovery derives first-order bosonic
-mean-field equations, finds stable fixed points, and evaluates collapse amplitudes
-at those points.
+collapse-operator expectations. Semiclassical discovery solves the first-order
+mean-field equations `dα_j/dt = ⟨α|L†(a_j)|α⟩ = 0` for the amplitudes `α` of the modes,
+where `|α⟩` is a coherent product state and `L†(a_j) = i[H, a_j] + Σ_μ (C_μ† a_j C_μ -
+{C_μ†C_μ, a_j} / 2)` is the Heisenberg-picture generator. It keeps the stable solutions
+and evaluates the collapse-operator expectations `⟨α|C_μ|α⟩` at them. The operators
+are the truncated matrices of `H` and `c_ops`, so the occupations of the solutions must
+stay well below the Fock cutoffs.
 
 # Arguments
 
@@ -75,9 +73,10 @@ the semiclassical method must be selected explicitly.
 - `method::Symbol`: Set to `:trajectories` (the default).
 - `mode_ops`: Nonempty collection of bosonic annihilation operators, embedded
   in the full tensor-product Hilbert space. Each operator must have the same
-  dimensions as `H`; their order defines the rows of the returned centers.
-- `mode_dims`: One integer Hilbert-space truncation dimension, at least `2`,
-  per mode, in tensor-product order.
+  dimensions as `H`, and `mode_ops[j]` must act on the `j`-th tensor factor. Their
+  order defines the rows of the returned centers.
+- `mode_dims`: One integer Hilbert-space truncation dimension per mode, in
+  tensor-product order. Together they must span the whole space of `H`.
 - `discovery_time`: Positive, finite duration of each preliminary trajectory,
   which starts at time zero.
 - `seed_radii`: One finite, nonnegative coherent-amplitude radius per mode.
@@ -100,8 +99,8 @@ the semiclassical method must be selected explicitly.
   gauges use expectations of the original physical collapse operators.
 - `dbscan_radius`: Positive, finite DBSCAN neighborhood radius in the scaled
   real-imaginary feature space. Defaults to `1.5`.
-- `min_neighbors::Int`: Positive DBSCAN core-point neighbor-count threshold,
-  passed to `Clustering.dbscan`. Defaults to `10`.
+- `min_neighbors::Int`: Positive DBSCAN core-point threshold: the number of points
+  within `dbscan_radius`, the point itself included. Defaults to `10`.
 - `min_weight`: Minimum retained cluster population as a fraction of all
   `nseeds` samples. Must be finite and in `[0, 1)`; defaults to `0.02`.
 - `rng::AbstractRNG`: Random number generator for the initial amplitudes and
@@ -115,38 +114,31 @@ the semiclassical method must be selected explicitly.
 
 ## Semiclassical discovery
 
-- `hamiltonian::Function`: Function `hamiltonian(a₁, a₂, ...)` returning a
-  QuantumCumulants Hamiltonian from symbolic bosonic annihilation operators.
-- `collapse_operators::Function`: Function `collapse_operators(a₁, a₂, ...)` returning
-  a tuple or vector of QuantumCumulants collapse operators. It is also called
-  with complex fixed-point amplitudes and must then produce a collection of
-  the same length that evaluates to finite physical collapse amplitudes.
-  Include square roots of decay rates in both evaluations.
+- `H`, `c_ops`, `mode_ops`, `mode_dims`: As for trajectory discovery. The collapse
+  operators may be nonlinear in the modes, such as `a^2` or `a' * a`.
 - `method::Symbol`: Set to `:semiclassical`.
 - `limits`: Nonempty tuple or vector of positive, finite occupation bounds,
   one per mode. Accepted fixed points satisfy `abs2(α[m]) ≤ limits[m]` up to
-  numerical tolerance. These bounds define the search region.
-- `parameters`: Tuple, vector, or dictionary of unique symbolic
-  `parameter => value` pairs with finite numeric values. The keys must exactly
-  match the parameters of the compiled mean-field system. Defaults to `()`
-  for a model without symbolic parameters.
+  numerical tolerance. These bounds define the search region, and they should
+  stay a few standard deviations `√limits[m]` below `mode_dims[m]`; operators of
+  higher degree in the modes need more margin.
+- `ensemblealg`: How the Newton solves from the grid of starting points run:
+  `EnsembleThreads()` (default), `EnsembleSerial()`, or `EnsembleDistributed()`.
+  Distributed execution requires worker processes with DiSLOUTrajectories loaded.
 
 # Notes
 
-- Load `Clustering.jl` together with `DiSLOUTrajectories.jl` before calling
-  `method=:trajectories`. It activates the extension that implements the
-  DBSCAN clustering step.
-- Load `QuantumCumulants.jl` together with `DiSLOUTrajectories.jl` before calling
-  `method=:semiclassical`.
 - The two methods have separate keyword sets. Arbitrary `mcsolve` or ODE
   solver options are not forwarded.
 - Trajectory cluster weights are fractions of all preliminary samples,
   including discarded samples in the denominator. Their sum can be less than
   one. Clusters are ordered by decreasing weight, then by their centers.
   Noise points and samples from discarded clusters receive label `0`.
-- Stability of the semiclassical solution is determined
-  from the real mean-field Jacobian. A finite multistart search can miss roots,
-  and its cost grows rapidly with the number of modes.
+- Stability of the semiclassical solution is determined from the real
+  mean-field Jacobian. The search starts from a regular grid of `5^(2m)` points
+  for `m` modes, so it can miss roots and its cost grows rapidly with the number
+  of modes. It uses the truncated matrices of `H` and `c_ops`, which reproduce
+  the mean-field equations only while the occupations stay well below the cutoffs.
 - Discovery raises an `ArgumentError` if no trajectory cluster or stable
   semiclassical fixed point is retained.
 
@@ -159,8 +151,8 @@ the semiclassical method must be selected explicitly.
   - `method::Symbol`: `:trajectories` or `:semiclassical`.
   - `centers::Matrix{ComplexF64}`: `Nm × Ng` cluster-mean mode amplitudes
     or stable fixed-point amplitudes.
-  - `weights::Vector{Float64}`: `Ng` cluster population fractions or uniform
-    semiclassical weights, as described above.
+  - `weights::Vector{Float64}`: `Ng` cluster population fractions, as described
+    above, or the uniform weights `1/Ng` of the semiclassical method.
   - `diagnostics::NamedTuple`: Method-specific discovery data described below.
 
 For trajectory discovery, `diagnostics` contains:
@@ -195,71 +187,23 @@ For semiclassical discovery, `diagnostics` contains:
 - `rejected`: Matrix of the unstable fixed points excluded from `centers`.
 - `stable`: Boolean vector of length `Ng`, with every entry `true`.
 """
-discover_gauges(model, collapse_operators; method::Symbol = :trajectories, kwargs...) =
-    _discover_gauges(Val(method), model, collapse_operators; kwargs...)
+discover_gauges(H, c_ops; method::Symbol = :trajectories, kwargs...) =
+    _discover_gauges(Val(method), H, c_ops; kwargs...)
 
-# The methods live in the Clustering (:trajectories) and QuantumCumulants
-# (:semiclassical) extensions. This fallback runs when they are not loaded.
-function _discover_gauges(::Val{method}, args...; kwargs...) where {method}
-    package = get((trajectories = "Clustering", semiclassical = "QuantumCumulants"), method, nothing)
-    package === nothing &&
-        throw(ArgumentError("unknown gauge discovery method :$method; use :trajectories or :semiclassical"))
-    throw(ArgumentError("method = :$method requires $package. Try running `using $package` first."))
-end
-
-# Paper Eqs. (A.6–A.7): one trajectory from each random coherent state, averaging
-# the mode amplitudes and the collapse expectations over the terminal window.
-# Used by the Clustering extension; it lives here so that distributed workers can
-# run it without loading Clustering.
-function _run_preliminary_trajectories(
-        H, c_ops, shifts, mode_ops, mode_dims, discovery_time, seed_radii, step, nseeds,
-        terminal_window, rng, save_preliminary_trajectories, ensemblealg
-    )
-    tlist = collect(0.0:float(step):float(discovery_time))
-    last(tlist) < discovery_time && push!(tlist, float(discovery_time))
-    start = discovery_time - terminal_window
-    tail = findall(t -> t >= start || t ≈ start, tlist)   # the window, up to rounding of `start`
-
-    Hrun, Crun = all(iszero, shifts) ? (H, c_ops) : _shifted_operators(H, c_ops, shifts)
+# Checks that H, the collapse operators and the bosonic mode operators (one per tensor
+# factor, in order) live in the tensor product of Fock spaces of dimensions `mode_dims`.
+function _check_operators(H, c_ops, mode_ops, mode_dims)
     nmodes = length(mode_ops)
-    e_ops = vcat(collect(mode_ops), [op' * op for op in mode_ops], collect(c_ops))
-    modes, occupations, collapses = 1:nmodes, nmodes .+ (1:nmodes), 2nmodes .+ eachindex(c_ops)
-
-    # Initial amplitudes uniform in a disk of radius `seed_radii[mode]`, and one seed per run.
-    amplitudes = [seed_radii[mode] * sqrt(rand(rng)) * cis(2π * rand(rng)) for mode in 1:nmodes, _ in 1:nseeds]
-    seeds = [rand(rng, UInt64) for _ in 1:nseeds]
-    nsave = min(save_preliminary_trajectories, nseeds)
-
-    function relax(point)
-        ψ0 = tensor((coherent(Int(mode_dims[mode]), amplitudes[mode, point]) for mode in 1:nmodes)...)
-        sol = mcsolve(
-            Hrun, ψ0, tlist, Crun; e_ops, ntraj = 1, rng = Xoshiro(seeds[point]), saveat = tlist,
-            keep_runs_results = Val(true), ensemblealg = EnsembleSerial(), progress_bar = Val(false)
-        )
-        expect = sol.expect[:, 1, :]
-        terminal = vec(sum(expect[:, tail]; dims = 2)) / length(tail)
-        point <= nsave || return (; terminal, trace = nothing)
-        states = stack(ψ.data for ψ in vec(sol.states))
-        return (; terminal, trace = (; states, expect, col_times = sol.col_times[1], col_which = sol.col_which[1]))
-    end
-
-    results = _map_seeds(relax, nseeds, ensemblealg)
-    averages = stack(result.terminal for result in results)
-    traces = [results[point].trace for point in 1:nsave]
-    return (;
-        tlist, nsave,
-        terminal_means = averages[modes, :],
-        terminal_occupations = real.(averages[occupations, :]),
-        terminal_collapse_means = averages[collapses, :],
-        states = [trace.states for trace in traces],
-        traces = [trace.expect[modes, :] for trace in traces],
-        occupations = [real.(trace.expect[occupations, :]) for trace in traces],
-        jump_times = [trace.col_times for trace in traces],
-        jump_channels = [trace.col_which for trace in traces],
-    )
+    nmodes > 0 && length(mode_dims) == nmodes ||
+        throw(DimensionMismatch("mode_ops needs at least one operator, with one entry of mode_dims each"))
+    isempty(c_ops) && throw(ArgumentError("need at least one collapse operator"))
+    dims = Tuple(Int.(mode_dims))
+    has_dims(op) = size(op.data) == (prod(dims), prod(dims)) && Tuple(first(op.dims)) == dims && Tuple(last(op.dims)) == dims
+    all(has_dims, (H, mode_ops..., c_ops...)) ||
+        throw(DimensionMismatch("H, mode_ops and c_ops must have tensor dimensions mode_dims=$dims"))
+    return nothing
 end
 
-# Run `f(i)` for `i in 1:n` as requested by `ensemblealg`.
-_map_seeds(f, n, ::EnsembleSerial) = map(f, 1:n)
-_map_seeds(f, n, ::EnsembleThreads) = fetch.([Threads.@spawn f(i) for i in 1:n])
-_map_seeds(f, n, ::EnsembleDistributed) = Distributed.pmap(f, 1:n)
+function _discover_gauges(::Val{method}, args...; kwargs...) where {method}
+    throw(ArgumentError("unknown gauge discovery method :$method; use :trajectories or :semiclassical"))
+end
