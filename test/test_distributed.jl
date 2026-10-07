@@ -43,6 +43,15 @@ end
         serial_gauges = discover(EnsembleSerial())
         @test distributed_gauges.shifts == serial_gauges.shifts
         @test distributed_gauges.diagnostics.terminal_means == serial_gauges.diagnostics.terminal_means
+
+        semiclassical(ensemblealg) = discover_gauges(
+            kerr.H, kerr.c_ops;
+            method = :semiclassical, mode_ops = [a], mode_dims = [p.N], limits = (20.0,),
+            ensemblealg
+        )
+        distributed_semiclassical = semiclassical(EnsembleDistributed())
+        serial_semiclassical = semiclassical(EnsembleSerial())
+        @test distributed_semiclassical.diagnostics.roots == serial_semiclassical.diagnostics.roots
     finally
         rmprocs(workers_added)
     end
