@@ -225,7 +225,7 @@ sum(length, sol.col_times)
 ```
 
 ```text
-16267
+16272
 ```
 
 ### Compare observables and inspect a switch
@@ -465,7 +465,7 @@ sum(length, layer3_sol.col_times)
 ```
 
 ```text
-16267
+16272
 ```
 
 Compare the memory-quadrature mean and its standard error with the
