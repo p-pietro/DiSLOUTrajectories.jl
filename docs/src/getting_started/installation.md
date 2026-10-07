@@ -27,18 +27,10 @@ DiSLOUTrajectories.about()
 
 `DiSLOUTrajectories.jl` is built upon `QuantumToolbox.jl`, which is a cutting-edge Julia package designed for quantum physics simulations, closely emulating the popular Python [`QuTiP`](https://qutip.org/) package. It provides many useful functions to create arbitrary quantum states and operators which can be combined in all the expected ways. It uniquely combines the simplicity and power of Julia with advanced features like GPU acceleration and distributed computing, making simulation of quantum systems more accessible and efficient.
 
-## Optional extensions
+## Optional extension
 
-Automatic gauge discovery via initial trajectories clusters the terminal amplitudes of its preliminary runs
-with DBSCAN. Install [```Clustering.jl```](https://github.com/JuliaStats/Clustering.jl) and load it to activate this method:
-
-```julia
-using Pkg
-Pkg.add("Clustering")
-using Clustering
-```
-
-Semiclassical gauge discovery requires instead [```QuantumCumulants.jl```](https://qojulia.github.io/QuantumCumulants.jl) to derive the semiclassical equations of motion.
+Gauge discovery from preliminary trajectories needs no extra package. Semiclassical gauge discovery
+requires [```QuantumCumulants.jl```](https://qojulia.github.io/QuantumCumulants.jl) to derive the semiclassical equations of motion.
 Install ```QuantumCumulants.jl``` and load it to activate this method:
 
 ```julia

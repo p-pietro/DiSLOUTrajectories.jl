@@ -28,12 +28,11 @@ Pkg.instantiate()
 ## Load the packages
 
 QuantumToolbox supplies the operators and reference solver; DiSLOUTrajectories.jl supplies
-gauge discovery and trajectory propagation. Clustering and QuantumCumulants
-enable the two discovery methods, and CairoMakie draws the figures.
+gauge discovery and trajectory propagation. QuantumCumulants enables semiclassical
+discovery, and CairoMakie draws the figures.
 
 ```julia
 using CairoMakie
-using Clustering
 using DiSLOUTrajectories
 using QuantumToolbox
 using Random

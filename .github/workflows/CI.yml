@@ -214,7 +214,7 @@ jobs:
           use_oidc: true
 
   extension:
-    name: Clustering and semiclassical extensions / 4 threads
+    name: Semiclassical extension / 4 threads
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -238,7 +238,6 @@ jobs:
               # QuantumCumulants 0.7 still requires QuantumToolbox 0.47.
               PackageSpec(name="QuantumToolbox", version="0.47"),
               PackageSpec(name="SciMLBase", version="3"),
-              PackageSpec(name="Clustering", version="0.15"),
               PackageSpec(name="QuantumCumulants", version="0.7"),
               PackageSpec(name="ModelingToolkitBase", version="1.36"),
               PackageSpec(name="TestReports", version="1.4"),
@@ -251,8 +250,7 @@ jobs:
           JULIA_NUM_THREADS: 4
         run: >-
           julia --code-coverage=@. --project="$EXTENSION_ENV" --startup-file=no
-          test/junit.jl test/testsetup.jl test/test_gauge_discovery.jl
-          test/test_semiclassical.jl
+          test/junit.jl test/testsetup.jl test/test_semiclassical.jl
       - uses: julia-actions/julia-processcoverage@v1
         with:
           directories: src,ext

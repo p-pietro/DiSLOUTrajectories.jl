@@ -26,7 +26,6 @@ Pkg.instantiate()
 
 ```julia
 using CairoMakie
-using Clustering
 using DiSLOUTrajectories
 using LinearAlgebra
 using QuantumToolbox

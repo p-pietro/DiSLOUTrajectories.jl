@@ -216,11 +216,12 @@ than the markers for this example.
 ## Discover the gauge automatically
 
 For this cavity the gauge is known analytically. The two discovery methods
-recover it from the same model. Install their optional dependencies once:
+recover it from the same model. The semiclassical one needs QuantumCumulants,
+which you can install once:
 
 ```julia
 using Pkg
-Pkg.add(["Clustering", "QuantumCumulants"])
+Pkg.add("QuantumCumulants")
 ```
 
 ### From preliminary trajectories
@@ -230,7 +231,6 @@ their terminal amplitudes. Let them relax for ``20/κ`` to find the single
 center near ``α``:
 
 ```jldoctest quickstart
-using Clustering
 trajectory_gauges = discover_gauges(H, c_ops;
     method = :trajectories, mode_ops = [a], mode_dims = [N],
     discovery_time = 20.0 / κ, step = 0.5 / κ,
