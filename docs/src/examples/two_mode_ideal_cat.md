@@ -84,15 +84,18 @@ c_ops = cat_collapse_operators(a, b)
 
 ## Semiclassical and trajectory branch discovery
 
-The semiclassical centers ``(\alpha_g,\beta_g)`` determine ``\zeta_\mu^{(g)}`` through Eq. (A.5), and the dephasing channel ``C_\phi\propto a^\dagger a`` enters the mean-field equations like any other collapse operator. The occupation bounds `limits` keep the coherent states of the fixed points well inside the Fock cutoffs. The trajectory discovery method uses a betadyne unraveling: a large local-oscillator displacement is added to the memory-loss channel, while the buffer-loss and dephasing channels are left unchanged. This is needed to distinguish the ``+\alpha`` and ``-\alpha`` lobes, otherwise the trajectories would stabilize to cat states.[^unraveling] The code variable `β` is the displacement ``\zeta_1=2\sqrt{\kappa_1}\alpha``, distinct from the buffer amplitude ``\beta_g``.
+The semiclassical centers ``(\alpha_g,\beta_g)`` determine ``\zeta_\mu^{(g)}`` through Eq. (A.5), and the dephasing channel ``C_\phi\propto a^\dagger a`` enters the mean-field equations like any other collapse operator. The mean-field equations are evaluated on coherent states of the truncated operators, so the fixed points are converged only if these states fit well inside the Fock cutoffs. The cutoffs ``N_a=20``, ``N_b=6`` are enough for the trajectories but leave an error of about ``2\times10^{-5}`` in the shifts, so the semiclassical discovery below builds the same model in a slightly larger space, ``N_a=30``, ``N_b=8``, where the error is below ``10^{-10}``. The shifts do not depend on the cutoff, so the result applies to the smaller space. The trajectory discovery method uses a betadyne unraveling: a large local-oscillator displacement is added to the memory-loss channel, while the buffer-loss and dephasing channels are left unchanged. This is needed to distinguish the ``+\alpha`` and ``-\alpha`` lobes, otherwise the trajectories would stabilize to cat states.[^unraveling] The code variable `β` is the displacement ``\zeta_1=2\sqrt{\kappa_1}\alpha``, distinct from the buffer amplitude ``\beta_g``.
 
 ```julia
+Na_gauge, Nb_gauge = 30, 8
+a_gauge = tensor(destroy(Na_gauge), qeye(Nb_gauge))
+b_gauge = tensor(qeye(Na_gauge), destroy(Nb_gauge))
 sc = discover_gauges(
-    H,
-    c_ops;
+    cat_hamiltonian(a_gauge, b_gauge),
+    cat_collapse_operators(a_gauge, b_gauge);
     method=:semiclassical,
-    mode_ops=[a, b],
-    mode_dims=[Na, Nb],
+    mode_ops=[a_gauge, b_gauge],
+    mode_dims=[Na_gauge, Nb_gauge],
     limits=(12, 4),
 )
 
@@ -282,7 +285,7 @@ for trajectory in 1:6
 end
 axislegend(ax_trajectories; position=:rb, nbanks=2)
 
-switch_window = (665.0, 668.0)
+switch_search = (650.0, 680.0)   # the interval with the dense time grid
 lobe_threshold = real(expect(xa, ψ0)) / 2
 function persistent_switch_sample(trajectory_x)
     lobe = 1
@@ -291,7 +294,7 @@ function persistent_switch_sample(trajectory_x)
         scaled_time = κ2 * tlist[sample]
         if lobe == 1 && trajectory_x[sample] <= -lobe_threshold
             lobe = -1
-            candidate = switch_window[1] <= scaled_time <= switch_window[2] ? sample : nothing
+            candidate = switch_search[1] <= scaled_time <= switch_search[2] ? sample : nothing
         elseif lobe == -1 && trajectory_x[sample] >= lobe_threshold
             lobe = 1
             candidate = nothing
@@ -305,11 +308,12 @@ for trajectory in axes(sol.expect, 2)
     sample = persistent_switch_sample(real.(sol.expect[1, trajectory, :]))
     isnothing(sample) || push!(switch_candidates, (trajectory, sample))
 end
-isempty(switch_candidates) && error("no persistent trajectory switch found in κ₂t ∈ $(switch_window)")
+isempty(switch_candidates) && error("no persistent trajectory switch found in κ₂t ∈ $(switch_search)")
 trajectory_index, switch_sample = argmin(
-    candidate -> abs(κ2 * tlist[candidate[2]] - sum(switch_window) / 2),
+    candidate -> abs(κ2 * tlist[candidate[2]] - sum(switch_search) / 2),
     switch_candidates,
 )
+switch_window = κ2 * tlist[switch_sample] .+ (-1.5, 1.5)
 trajectory_x = real.(sol.expect[1, trajectory_index, :])
 crossing_interval = findlast(
     index -> signbit(trajectory_x[index]) != signbit(trajectory_x[index + 1]),
