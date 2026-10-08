@@ -18,6 +18,8 @@ end
     workers_added = addprocs(2; exeflags = `--project=$project --startup-file=no`)
     try
         @everywhere using DiSLOUTrajectories, QuantumToolbox
+        # The serial runs use Accelerate on macOS (see runtests.jl), so the workers must too.
+        Sys.isapple() && @everywhere using AppleAccelerate
         p = DrivenKerrParams(N = 20)
         kerr = driven_kerr_model(p)
         shifts = -sqrt(kerr.κ) * ComplexF64[kerr.αlow kerr.αhigh]
