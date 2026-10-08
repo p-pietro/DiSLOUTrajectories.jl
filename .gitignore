@@ -1,4 +1,5 @@
 Manifest.toml
+/junit.xml
 .DS_Store
 docs/build/
 docs/node_modules/
