@@ -66,6 +66,14 @@
             @test sprint(show, sol.alg) == "GaugeEigenExponential(2 gauge(s), 30 modes, Layer III modes [12, 16])"
             @test count(reduced) > length(reduced) / 2
             @test within_errors(sol, n_mesolve; atol = 1.0e-2)
+            # The final states are kets, not coordinates on the slow modes.
+            @test [expect(kerr.nop, ψ) for ψ in sol.states[:, end]] ≈ sol.expect[1, :, end]
+
+            # With the states saved at every time, the steps end on kets instead of coordinates.
+            sol_states = kerr_solve(; layer3_sizes = [12, 16], keep_runs_results = Val(true), saveat = tlist)
+            @test sol_states.col_which == sol.col_which
+            @test all(isapprox(sol_states.col_times[i], sol.col_times[i]; atol = 1.0e-8) for i in 1:300)
+            @test sol_states.expect ≈ sol.expect atol = 1.0e-8
         end
     end
 

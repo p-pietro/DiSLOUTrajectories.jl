@@ -13,7 +13,6 @@ DiSLOUTrajectories.jl depends directly on the following third-party software, wh
 | QuantumToolbox.jl                      | BSD-3-Clause |
 | Random (Julia standard library)        | MIT          |
 | SciMLBase.jl                           | MIT          |
-| SciMLOperators.jl                      | MIT          |
 | SimpleNonlinearSolve.jl                | MIT          |
 
 ## Documentation and test dependencies
