@@ -11,3 +11,6 @@ logs/
 .tokensave/
 .worktrees/
 .vscode/
+*.jl.cov
+*.jl.*.cov
+*.jl.mem

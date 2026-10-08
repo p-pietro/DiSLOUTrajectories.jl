@@ -8,8 +8,6 @@ using Test
 
 const ROOT = normpath(joinpath(@__DIR__, "..", ".."))
 
-include("../reporting/check.jl")
-
 @testset "Code quality" begin
     @testset "Aqua" begin
         # Aqua's subprocess probe flakes on hosted Julia 1.12
@@ -85,22 +83,17 @@ include("../reporting/check.jl")
     end
 
     # A new test_*.jl file that nobody wired into runtests.jl runs nowhere.
-    # The GPU and multi-process suites are owned by dedicated CI jobs.
-    @testset "every package test file runs somewhere" begin
-        extended = Set(["test_gpu.jl", "test_distributed.jl"])
+    @testset "every package test file runs" begin
         runtests = read(joinpath(ROOT, "test", "runtests.jl"), String)
         included = Set(
             match.captures[1] for match in
                 eachmatch(r"""include\("([^"]+)"\)""", runtests)
         )
         @test all(path -> isfile(joinpath(ROOT, "test", path)), included)
-        present = Set(
-            filter(
-                path -> startswith(path, "test_") && endswith(path, ".jl"),
-                readdir(joinpath(ROOT, "test")),
-            )
+        present = filter(
+            path -> startswith(path, "test_") && endswith(path, ".jl"),
+            readdir(joinpath(ROOT, "test")),
         )
-        @test setdiff(present, included) == extended
-        @test all(path -> isfile(joinpath(ROOT, "test", path)), extended)
+        @test issubset(present, included)
     end
 end
