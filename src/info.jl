@@ -35,22 +35,16 @@ about(io::IO = stdout) = versioninfo(io)
 """
     DiSLOUTrajectories.cite(io::IO = stdout)
 
-Command line output of the BibTeX entries of DiSLOUTrajectories.jl and of its method paper.
+Command line output of the BibTeX entry for the DiSLOUTrajectories.jl GitHub repository.
 """
 function cite(io::IO = stdout)
     citation = raw"""
-    @software{Pacchioni2026DiSLOU,
-      author = {Pietro Pacchioni and Fabrizio Minganti},
+    @software{DiSLOUTrajectories,
+      author = {Pacchioni, Pietro and Mercurio, Alberto and Winkel, Patrick and Minganti, Fabrizio},
       title = {DiSLOUTrajectories.jl},
-      year = {2026},
+      version = {0.1.0},
       license = {BSD-3-Clause},
       url = {https://github.com/p-pietro/DiSLOUTrajectories.jl}
-    }
-
-    @article{Pacchioni2026Diagonal,
-      author = {Pietro Pacchioni and Patrick Winkel and Fabrizio Minganti},
-      title = {Diagonal, Switching, and Locally Optimal Unraveling for efficient quantum trajectories in metastable open quantum systems},
-      year = {2026}
     }
     """
     return print(io, citation)

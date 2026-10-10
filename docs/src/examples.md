@@ -1,6 +1,6 @@
 # Examples
 
-The examples linked here show how to use `DiSLOUTrajectories.jl` on systems similar to those studied in the [DiSLOUTrajectories paper](./getting_started/cite.md). Start with the Kerr walkthrough,
+The examples linked here show how to use `DiSLOUTrajectories.jl` to simulate metastable open quantum systems. Start with the Kerr walkthrough,
 then apply the same workflow to the more complicated two-mode models:
 
 - [Driven Kerr resonator](examples/kerr_resonator.md): discover two gauges,
@@ -11,8 +11,7 @@ then apply the same workflow to the more complicated two-mode models:
 - [Two-mode detuned cat](examples/two_mode_detuned_cat.md): find three metastable regions, compute the steady state, and compare full-space and reduced
   trajectory propagation.
 
-All quation and section
-numbers refer to the companion paper, but the numerical parameters may be different.
+All equation and section numbers refer to the [forthcoming companion paper](./getting_started/cite.md), but the numerical parameters may be different.
 
 ## Running the examples
 
