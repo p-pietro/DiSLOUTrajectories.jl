@@ -1,7 +1,7 @@
 # Two-mode detuned cat
 
 Here we consider a realistic example of a two-mode parametrically coupled driven-dissipative system, including non-linearities and detuning terms. The Hamiltonian and collapse-operator conventions follow Section 5.2 of the
-[paper](../getting_started/cite.md).
+[forthcoming paper](../getting_started/cite.md).
 
 Run the code blocks in order in one Julia session, starting from the
 repository root. See [Running the examples](../examples.md#Running-the-examples)

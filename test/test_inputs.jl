@@ -31,5 +31,7 @@ end
     @test occursin("DiSLOUTrajectories   Ver. $(pkgversion(SM))", info)
     @test occursin("QuantumToolbox.jl", info)
     @test sprint(SM.about) == info
-    @test occursin("@article", sprint(SM.cite))
+    citation = sprint(SM.cite)
+    @test occursin("@software{DiSLOUTrajectories", citation)
+    @test occursin("url = {https://github.com/p-pietro/DiSLOUTrajectories.jl}", citation)
 end

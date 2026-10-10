@@ -2,7 +2,7 @@
 
 ## Paper notation
 
-The notation follows that of the [reference paper](./getting_started/cite.md) for the DiSLOU method.
+The notation follows that of the [forthcoming paper](./getting_started/cite.md) for the DiSLOU method.
 
 | Code | Paper quantity |
 | :----- | :--------------- |

@@ -4,7 +4,7 @@
 """
     discover_gauges(H, c_ops; <keyword arguments>)
 
-Discover the paper's shifts `ζ_μ^(g)` (Eq. 9) for [`dislou_solve`](@ref).
+Discover the gauge shifts `ζ_μ^(g)` (Eq. 9) for [`dislou_solve`](@ref).
 
 The default `method=:trajectories` clusters terminal amplitudes from preliminary
 quantum trajectories. With `method=:semiclassical`, it instead finds the stable
