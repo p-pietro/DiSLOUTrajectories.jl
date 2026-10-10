@@ -13,12 +13,14 @@ struct EigenBasis{T <: Number, VT <: AbstractVector{T}, MT <: AbstractMatrix{T}}
     V::MT
     Q::MT
     R::UpperTriangular{T, MT}
+    G::MT                      # V†V = R†R, shared by survival and its derivative
 end
 
 function EigenBasis(λ::AbstractVector, V::AbstractMatrix)
     F = qr(V)
     Q = lmul!(F.Q, _identity_like(V))   # the Q factor, with the array type of V
-    return EigenBasis(λ, V, Q, UpperTriangular(F.R))
+    R = UpperTriangular(F.R)
+    return EigenBasis(λ, V, Q, R, R' * R)
 end
 
 # Identity matrix with the size and array type of `A`.
@@ -171,7 +173,7 @@ function Base.show(io::IO, alg::GaugeEigenExponential)
 end
 
 # Per-trajectory state: the gauge, and the basis of the current step.
-OrdinaryDiffEqCore.@cache mutable struct GaugeEigenExponentialCache{uType, B <: EigenBasis} <: OrdinaryDiffEqCore.OrdinaryDiffEqMutableCache
+OrdinaryDiffEqCore.@cache mutable struct GaugeEigenExponentialCache{uType, B <: EigenBasis, tType, rType} <: OrdinaryDiffEqCore.OrdinaryDiffEqMutableCache
     u::uType
     uprev::uType
     tmp::uType        # scratch lent to callbacks (`get_tmp_cache`)
@@ -184,6 +186,10 @@ OrdinaryDiffEqCore.@cache mutable struct GaugeEigenExponentialCache{uType, B <: 
     gauge::Int
     reduced::Bool     # whether `basis` holds the slow modes of the gauge (Layer III)
     coordinates::Bool # whether `u` holds the coordinates Q†ψ on these modes instead of ψ
+    condition_time::tType
+    survival::rType
+    rate::rType
+    condition_valid::Bool
 end
 
 function OrdinaryDiffEqCore.alg_cache(
@@ -193,7 +199,8 @@ function OrdinaryDiffEqCore.alg_cache(
     ) where {uEltypeNoUnits, uBottomEltypeNoUnits, tTypeNoUnits}
     return GaugeEigenExponentialCache(
         u, uprev, zero(u), zero(u), zero(u), zero(u), zero(u),
-        first(alg.bases), zeros(length(alg.bases)), 1, false, false
+        first(alg.bases), zeros(length(alg.bases)), 1, false, false,
+        t, zero(real(eltype(u))), zero(real(eltype(u))), false
     )
 end
 
@@ -235,6 +242,7 @@ end
 
 # The next step starts on the slow modes of the gauge `g`, from the coordinates q = Q†ψ.
 function _enter_slow_modes!(cache, alg, g, q)
+    cache.condition_valid = false
     basis = alg.slow[g].basis
     ldiv!(view(cache.c_next, 1:length(basis)), basis.R, q)
     cache.gauge = g
@@ -245,6 +253,7 @@ end
 
 # The next step starts on all the modes of the gauge `g`, from the state ψ.
 function _enter_all_modes!(cache, alg, g, ψ)
+    cache.condition_valid = false
     basis = alg.bases[g]
     _coordinates!(view(cache.c_next, 1:length(basis)), basis, ψ)
     cache.gauge = g
@@ -254,6 +263,7 @@ function _enter_all_modes!(cache, alg, g, ψ)
 end
 
 function OrdinaryDiffEqCore.perform_step!(integrator, cache::GaugeEigenExponentialCache, repeat_step = false)
+    cache.condition_valid = false
     (; alg, dt, uprev, u) = integrator
     uprev == cache.ulast || _switch_gauge!(cache, alg, uprev)   # changed by a callback
     basis = cache.basis

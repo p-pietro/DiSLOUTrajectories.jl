@@ -15,7 +15,7 @@
     @test_throws ArgumentError run(layer3_sizes = 6)
     @test_throws ArgumentError run(layer3_sizes = [1, 2])
     @test_throws ArgumentError run(alg = GaugeEigenExponential(m.H, m.c_ops))
-    @test_throws ArgumentError run(jump_callback = ContinuousLindbladJumpCallback())
+    @test_throws ArgumentError run(jump_derivative = false)
     @test_throws ArgumentError dislou_solve(
         m.H, m.ψ0, [0.0, 1.0], typeof(m.H)[]; gauge_set = zeros(ComplexF64, 0, 1)
     )

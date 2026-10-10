@@ -215,7 +215,7 @@ sum(length, sol.col_times)
 ```
 
 ```text
-176402
+176416
 ```
 
 ### Read the observables
@@ -299,7 +299,7 @@ sum(length, layer3_sol.col_times)
 ```
 
 ```text
-176404
+176416
 ```
 
 Overlay the memory-quadrature means and standard-error bands from
