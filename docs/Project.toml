@@ -8,6 +8,7 @@ TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 
 [compat]
 CairoMakie = "0.15"
+DiSLOUTrajectories = "0.1.0"
 Documenter = "1"
 QuantumToolbox = "0.50, 0.51"
 Random = "1.10"
