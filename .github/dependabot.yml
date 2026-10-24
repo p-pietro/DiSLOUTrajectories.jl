@@ -13,3 +13,5 @@ updates:
       - /examples
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "DiSLOUTrajectories"

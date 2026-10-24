@@ -14,7 +14,6 @@ TestReports = "dcd651b4-b50a-5b6b-8f22-87e9f253a252"
 [compat]
 AppleAccelerate = "0.7"
 CUDA = "6"
-DiSLOUTrajectories = "0.1.0"
 Distributed = "1.10"
 LinearAlgebra = "1.10"
 QuantumToolbox = "0.50, 0.51"
