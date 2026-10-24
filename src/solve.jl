@@ -28,7 +28,8 @@ Hamiltonian without changing the master equation (Eq. 9):
   one (Eqs. 11–13).
 - **Layer II**: between jumps, the state evolves exactly in the eigenbasis of the
   effective Hamiltonian of the gauge, with [`GaugeEigenExponential`](@ref). Jump
-  times are found by root finding on this exact solution.
+  times are found by safeguarded Newton steps on this exact solution, using the
+  analytical survival derivative.
 - **Layer III** (optional): after a jump, a state within `residual_tolerance` of the
   `layer3_sizes` slowest eigenmodes of its gauge is projected on them, and evolves
   in that smaller basis until the next jump (Eqs. 20–21).
@@ -47,6 +48,9 @@ Hamiltonian without changing the master equation (Eq. 9):
   which disables Layer III.
 - `residual_tolerance`: Largest relative distance ``r_{\rm tol} \in (0, 1)`` of the
   state from the slow modes for Layer III. Default `1e-3`.
+- `jump_log`: Locate jumps with ``\log r - \log s(t)`` instead of ``r - s(t)``,
+  where ``r`` is the random threshold and ``s`` the survival probability. Both
+  use the analytical derivative. Default `false`.
 - `kwargs`: Keyword arguments of `mcsolve`, such as `e_ops`, `ntraj`, `rng`,
   `ensemblealg`, `saveat`, `keep_runs_results`, `progress_bar` or `callback`.
 
@@ -57,7 +61,7 @@ Hamiltonian without changing the master equation (Eq. 9):
   act at times where the state is saved, for example times of `saveat`: elsewhere
   `integrator.u` can hold coordinates on the slow modes instead of the state (see below).
   Otherwise, disable Layer III with `layer3_sizes = nothing`.
-- `dislou_solve` sets the `alg` and `jump_callback` of `mcsolve` itself.
+- `dislou_solve` sets the `alg` and `jump_derivative` of `mcsolve` itself.
 - Jump records (`col_times`, `col_which`) refer to the shifted operators of the gauge
   that was active at each jump.
 - Layers I and II are exact up to floating-point errors, which grow with the condition
@@ -109,6 +113,7 @@ function dislou_solve(
         hysteresis::Real = 0.5,
         layer3_sizes = nothing,
         residual_tolerance::Real = 1.0e-3,
+        jump_log::Bool = false,
         e_ops = nothing,
         tstops = Float64[],
         kwargs...,
@@ -116,7 +121,7 @@ function dislou_solve(
     isempty(c_ops) && throw(ArgumentError("dislou_solve needs at least one collapse operator"))
     0 < hysteresis <= 1 || throw(ArgumentError("hysteresis must be in (0, 1], got $hysteresis"))
     0 < residual_tolerance < 1 || throw(ArgumentError("residual_tolerance must be in (0, 1), got $residual_tolerance"))
-    for key in (:alg, :jump_callback)
+    for key in (:alg, :jump_derivative)
         haskey(kwargs, key) && throw(ArgumentError("dislou_solve sets `$key` itself"))
     end
 
@@ -128,9 +133,6 @@ function dislou_solve(
         hysteresis, layer3_sizes, residual_tolerance, e_ops = [op.data for op in e_ops]
     )
 
-    # The norm decreases monotonically between jumps, so checking the step ends is
-    # enough to detect a jump.
-    jump_callback = ContinuousLindbladJumpCallback(interp_points = 0)
     # The expectation values are computed at the times of `tlist` after the jumps of their
     # step, so these times must be step ends. The stops also shorten the jump search. With
     # Layer III, the times of `saveat` are stops too: only step ends store the full state.
@@ -142,5 +144,5 @@ function dislou_solve(
     # The state has the array type and precision of the eigenbases.
     T = eltype(first(alg.bases).λ)
     ψ0 = QuantumObject(T.(to_dense(ψ0.data)); type = Ket(), dims = ψ0.dimensions)
-    return mcsolve(H, ψ0, tlist, c_ops; alg, e_ops, jump_callback, tstops, kwargs...)
+    return mcsolve(H, ψ0, tlist, c_ops; alg, e_ops, jump_derivative = Val(true), jump_log, tstops, kwargs...)
 end

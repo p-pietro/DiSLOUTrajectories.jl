@@ -9,6 +9,31 @@ import SciMLBase: EnsembleSerial, EnsembleThreads
 
 const SM = DiSLOUTrajectories
 
+# Count products in the jump condition without changing the model's matrices.
+struct CountedMatrix{T} <: AbstractMatrix{T}
+    data::Matrix{T}
+    products::Base.RefValue{Int}
+end
+Base.size(A::CountedMatrix) = size(A.data)
+Base.getindex(A::CountedMatrix, i::Int, j::Int) = A.data[i, j]
+function LinearAlgebra.mul!(y::AbstractVector, A::CountedMatrix, x::AbstractVector)
+    A.products[] += 1
+    return mul!(y, A.data, x)
+end
+function LinearAlgebra.mul!(y::AbstractVector, A::Adjoint{T, CountedMatrix{T}}, x::AbstractVector) where {T}
+    parent(A).products[] += 1
+    return mul!(y, parent(A).data', x)
+end
+function LinearAlgebra.mul!(y::AbstractVector, A::UpperTriangular{T, CountedMatrix{T}}, x::AbstractVector) where {T}
+    parent(A).products[] += 1
+    return mul!(y, UpperTriangular(parent(A).data), x)
+end
+
+counted_basis(b) = SM.EigenBasis(
+    b.λ, CountedMatrix(Matrix(b.V), Ref(0)), CountedMatrix(Matrix(b.Q), Ref(0)),
+    UpperTriangular(CountedMatrix(Matrix(b.R), Ref(0))), CountedMatrix(Matrix(b.G), Ref(0))
+)
+
 include(joinpath(@__DIR__, "fixtures", "driven_kerr_model.jl"))
 
 quiet = (progress_bar = Val(false),)

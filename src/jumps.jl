@@ -4,6 +4,47 @@
 
 const _GaugeIntegrator = SciMLBase.DEIntegrator{<:GaugeEigenExponential}
 
+# Root conditions need only the spectral norm, not an interpolated physical state.
+QuantumToolbox._mcsolve_jump_condition_state(integrator::_GaugeIntegrator, callback, t) = nothing
+
+function QuantumToolbox._mcsolve_jump_survival(u, t, integrator::_GaugeIntegrator)
+    cache = integrator.cache
+    cache.condition_valid && cache.condition_time == t && return cache.survival
+    t == integrator.t && return real(dot(integrator.u, integrator.u))
+    t == integrator.tprev && return real(dot(integrator.uprev, integrator.uprev))
+    return first(_jump_survival_and_rate!(integrator, t))
+end
+
+QuantumToolbox._mcsolve_jump_rate(jump, u, t, integrator::_GaugeIntegrator) =
+    last(_jump_survival_and_rate!(integrator, t))
+
+# One Gd product for survival; its derivative adds only an O(n) contraction.
+function _jump_survival_and_rate!(integrator, t)
+    cache = integrator.cache
+    cache.condition_valid && cache.condition_time == t && return (cache.survival, cache.rate)
+    basis = cache.basis
+    n = length(basis)
+    d = view(cache.c_scratch, 1:n)
+    if t == integrator.t
+        copyto!(d, view(cache.c_next, 1:n))
+    else
+        c = view(cache.c, 1:n)
+        @. d = exp(basis.λ * (t - integrator.tprev)) * c
+    end
+    jump = QuantumToolbox._mc_get_jump_callback(integrator).affect!
+    z = mul!(view(jump.cache_mc, 1:n), basis.G, d)
+    cache.survival, cache.rate = _survival_and_rate!(d, z, basis.λ)
+    cache.condition_time = t
+    cache.condition_valid = true
+    return (cache.survival, cache.rate)
+end
+
+function _survival_and_rate!(d, z, λ)
+    survival = real(dot(d, z))
+    @. d *= λ
+    return (survival, -2 * real(dot(z, d)))
+end
+
 # ‖C_μ^(g) ψ‖² in the current gauge g.
 function QuantumToolbox._mcsolve_jump_weights!(weights, _, cache_mc, integrator::_GaugeIntegrator)
     (; alg, cache, u) = integrator

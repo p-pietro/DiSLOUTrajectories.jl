@@ -205,7 +205,7 @@ sum(length, sol.col_times)
 ```
 
 ```text
-38946
+38939
 ```
 
 ### Read the photon-number dynamics
@@ -333,7 +333,7 @@ sum(length, layer3_sol.col_times)
 ```
 
 ```text
-38946
+38939
 ```
 
 Overlay the Layer III result with Layers I and II and `mesolve`, keeping
