@@ -116,7 +116,9 @@ function dislou_solve(
     isempty(c_ops) && throw(ArgumentError("dislou_solve needs at least one collapse operator"))
     0 < hysteresis <= 1 || throw(ArgumentError("hysteresis must be in (0, 1], got $hysteresis"))
     0 < residual_tolerance < 1 || throw(ArgumentError("residual_tolerance must be in (0, 1), got $residual_tolerance"))
-    haskey(kwargs, :alg) && throw(ArgumentError("dislou_solve sets `alg` itself"))
+    for key in (:alg, :jump_callback)
+        haskey(kwargs, key) && throw(ArgumentError("dislou_solve sets `$key` itself"))
+    end
 
     # QuantumToolbox's mcsolve fails when `e_ops = nothing` comes with an extra callback;
     # an empty list of observables gives the same result.
