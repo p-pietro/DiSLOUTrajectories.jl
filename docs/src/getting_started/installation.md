@@ -1,6 +1,6 @@
 # Installation
 
-`DiSLOUTrajectories.jl` requires Julia 1.10 or later and QuantumToolbox 0.50. To install it, run in an interactive session (REPL):
+`DiSLOUTrajectories.jl` requires Julia 1.10 or later and QuantumToolbox 0.50 or 0.51. To install it, run in an interactive session (REPL):
 
 ```julia
 using Pkg
