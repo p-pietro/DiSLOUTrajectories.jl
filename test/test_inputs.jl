@@ -31,6 +31,7 @@ end
     @test occursin("QuantumToolbox.jl", info)
     @test sprint(SM.about) == info
     citation = sprint(SM.cite)
-    @test occursin("@software{DiSLOUTrajectories", citation)
-    @test occursin("url = {https://github.com/p-pietro/DiSLOUTrajectories.jl}", citation)
+    @test occursin("@article{Pacchioni2026Diagonal", citation)
+    @test occursin("2610.36067", citation)
+    @test occursin("url = {https://arxiv.org/abs/2610.36067}", citation)
 end
