@@ -1,7 +1,7 @@
 ![DiSLOUTrajectories.jl logo](docs/src/assets/logo-dark.svg#gh-dark-mode-only)
 ![DiSLOUTrajectories.jl logo](docs/src/assets/logo.svg#gh-light-mode-only)
 
-| **Release** | [![Release][release-img]][release-url] [![License][license-img]][license-url] [![Soon on arXiv][cite-img]][cite-url] |
+| **Release** | [![Release][release-img]][release-url] [![License][license-img]][license-url] [![Cite][cite-img]][cite-url] |
 | :-----------------: | :------------- |
 | **Runtests** | [![CI][CI-img]][CI-url] [![Coverage][codecov-img]][codecov-url] |
 | **Code Quality** | [![Code Quality][code-quality-img]][code-quality-url] [![Aqua QA][aqua-img]][aqua-url] [![JET][jet-img]][jet-url] [![code style: runic][runic-img]][runic-url] |
@@ -12,8 +12,8 @@
 [license-img]: https://img.shields.io/badge/license-BSD--3--Clause-blue.svg
 [license-url]: LICENSE.md
 
-[cite-img]: https://img.shields.io/badge/soon_on_arXiv-blue
-[cite-url]: #license-and-citation
+[cite-img]: https://img.shields.io/badge/cite-arXiv:2610.36067-blue
+[cite-url]: https://arxiv.org/abs/2610.36067
 
 [CI-img]: https://github.com/p-pietro/DiSLOUTrajectories.jl/actions/workflows/CI.yml/badge.svg
 [CI-url]: https://github.com/p-pietro/DiSLOUTrajectories.jl/actions/workflows/CI.yml
@@ -117,15 +117,19 @@ Open `docs/build/index.html` to preview the result.
 
 DiSLOUTrajectories.jl is available under the [BSD-3-Clause License](LICENSE.md).
 
-If you found `DiSLOUTrajectories.jl` useful, please cite the [GitHub repository](https://github.com/p-pietro/DiSLOUTrajectories.jl) in your work using the following BibTeX entry:
+If you found `DiSLOUTrajectories.jl` useful, please cite our publication [ [arXiv:2610.36067 (2026)](https://arxiv.org/abs/2610.36067) ] in your work using the following BibTeX entry:
 
 ```bib
-@software{DiSLOUTrajectories,
+@article{Pacchioni2026Diagonal,
+  title = {Diagonal, Switching, and Locally Optimal Unraveling for efficient quantum trajectories in metastable open quantum systems},
   author = {Pacchioni, Pietro and Mercurio, Alberto and Winkel, Patrick and Minganti, Fabrizio},
-  title = {DiSLOUTrajectories.jl},
-  version = {0.1.0},
-  license = {BSD-3-Clause},
-  url = {https://github.com/p-pietro/DiSLOUTrajectories.jl}
+  journal = {arXiv preprint arXiv:2610.36067},
+  year = {2026},
+  eprint = {2610.36067},
+  archivePrefix = {arXiv},
+  primaryClass = {quant-ph},
+  doi = {10.48550/arXiv.2610.36067},
+  url = {https://arxiv.org/abs/2610.36067}
 }
 ```
 

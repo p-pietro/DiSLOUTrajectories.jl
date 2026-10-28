@@ -21,7 +21,8 @@ averaged or for every trajectory, as `mcsolve` does. Refer to the [API reference
 
 ## Read next
 
-- [Cite the DiSLOUTrajectories.jl repository](getting_started/cite.md).
+- [Read the paper where DiSLOU is introduced](https://arxiv.org/abs/2610.36067).
+- [Cite DiSLOUTrajectories.jl](getting_started/cite.md).
 - [Install DiSLOUTrajectories.jl](getting_started/installation.md).
 - [Run a first solve](getting_started/quickstart.md).
 - [Explore the examples](examples.md).

@@ -1,16 +1,18 @@
 # [Cite DiSLOUTrajectories.jl](@id doc-Cite)
 
-The DiSLOU method paper will be on arXiv soon.
-
-If you found `DiSLOUTrajectories.jl` useful, please cite the [GitHub repository](https://github.com/p-pietro/DiSLOUTrajectories.jl) using the following BibTeX entry:
+If you found `DiSLOUTrajectories.jl` useful, we would appreciate it if you could cite our publication [ [arXiv:2610.36067 (2026)](https://arxiv.org/abs/2610.36067) ] using the following bibtex entry:
 
 ```bib
-@software{DiSLOUTrajectories,
+@article{Pacchioni2026Diagonal,
+  title = {Diagonal, Switching, and Locally Optimal Unraveling for efficient quantum trajectories in metastable open quantum systems},
   author = {Pacchioni, Pietro and Mercurio, Alberto and Winkel, Patrick and Minganti, Fabrizio},
-  title = {DiSLOUTrajectories.jl},
-  version = {0.1.0},
-  license = {BSD-3-Clause},
-  url = {https://github.com/p-pietro/DiSLOUTrajectories.jl}
+  journal = {arXiv preprint arXiv:2610.36067},
+  year = {2026},
+  eprint = {2610.36067},
+  archivePrefix = {arXiv},
+  primaryClass = {quant-ph},
+  doi = {10.48550/arXiv.2610.36067},
+  url = {https://arxiv.org/abs/2610.36067}
 }
 ```
 
