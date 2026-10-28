@@ -11,7 +11,7 @@ then apply the same workflow to the more complicated two-mode models:
 - [Two-mode detuned cat](examples/two_mode_detuned_cat.md): find three metastable regions, compute the steady state, and compare full-space and reduced
   trajectory propagation.
 
-All equation and section numbers refer to the [companion paper](./getting_started/cite.md), but the numerical parameters may be different.
+All equation and section numbers refer to the [companion paper](https://arxiv.org/abs/2610.36067), but the numerical parameters may be different.
 
 ## Running the examples
 
